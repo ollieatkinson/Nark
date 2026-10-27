@@ -1,0 +1,43 @@
+#!/bin/bash
+#MISE description="Verify release signatures, entitlements, versions and architectures"
+
+source "$(dirname "$0")/../../lib/release.sh"
+
+validate_version
+validate_build
+require_env APPLE_TEAM_ID
+codesign --verify --deep --strict "$APP"
+temporary=$(mktemp -d)
+trap 'rm -rf "$temporary"' EXIT
+
+verify_bundle() {
+    local bundle="$1" executable="$2" identifier="$3"
+    local info="$bundle/Contents/Info.plist" service details architectures
+    [[ "$(plutil -extract CFBundleIdentifier raw -o - "$info")" == "$identifier" ]] || fail "Wrong bundle identifier in $bundle."
+    [[ "$(plutil -extract CFBundleShortVersionString raw -o - "$info")" == "$VERSION" ]] || fail "Wrong release version in $bundle."
+    [[ "$(plutil -extract CFBundleVersion raw -o - "$info")" == "$BUILD" ]] || fail "Wrong build number in $bundle."
+    if [[ "$identifier" == com.ollieatkinson.Nark ]]; then
+        service=$(plutil -extract NarkMachService raw -o - "$info")
+    else
+        service=$(plutil -extract NetworkExtension.NEMachServiceName raw -o - "$info")
+    fi
+    [[ "$service" == "group.com.ollieatkinson.Nark.filter.v$BUILD" ]] || fail "Wrong filter Mach service in $bundle."
+
+    codesign -d --entitlements :- "$bundle" > "$temporary/entitlements.plist" 2>/dev/null
+    plutil -convert json -o "$temporary/entitlements.json" "$temporary/entitlements.plist"
+    validate_entitlements "$temporary/entitlements.json" "$identifier"
+    jq -e '."com.apple.security.application-groups" | index("group.com.ollieatkinson.Nark") != null' \
+        "$temporary/entitlements.json" > /dev/null || fail "Missing Nark app group in $bundle."
+    details=$(codesign -dv --verbose=4 "$bundle" 2>&1)
+    [[ "$details" == *'Authority=Developer ID Application:'* \
+        && "$details" == *"TeamIdentifier=$APPLE_TEAM_ID"* \
+        && "$details" == *'(runtime)'* && "$details" == *'Timestamp='* ]] \
+        || fail "Expected a timestamped Developer ID signature with hardened runtime in $bundle."
+    architectures=$(lipo -archs "$bundle/Contents/MacOS/$executable")
+    [[ "$architectures" == 'arm64 x86_64' || "$architectures" == 'x86_64 arm64' ]] \
+        || fail "Expected both arm64 and x86_64 in $bundle."
+}
+
+verify_bundle "$APP" nark com.ollieatkinson.Nark
+verify_bundle "$APP/Contents/Library/SystemExtensions/com.ollieatkinson.Nark.Filter.systemextension" \
+    NarkFilter com.ollieatkinson.Nark.Filter

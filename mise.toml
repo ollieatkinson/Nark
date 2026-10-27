@@ -1,4 +1,5 @@
 [tools]
+jq = "1.8.2"
 swiftformat = { version = "0.64.3", no_app = true, rename_exe = "swiftformat" }
 
 [tasks.format]

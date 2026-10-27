@@ -1,0 +1,33 @@
+#!/bin/bash
+#MISE description="Notarize, staple and package the signed app with a checksum"
+
+source "$(dirname "$0")/../../lib/release.sh"
+
+validate_version
+require_env NOTARY_KEY_BASE64 NOTARY_KEY_ID NOTARY_ISSUER_ID
+[[ -d "$SIGNING_DIRECTORY" ]] || fail "Import signing assets before notarizing."
+umask 077
+key="$SIGNING_DIRECTORY/notary.p8"
+trap 'rm -f "$key"' EXIT
+decode_secret NOTARY_KEY_BASE64 "$key"
+ditto -c -k --keepParent "$APP" "$release_root/notarization.zip"
+auth=(--key "$key" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+status=0
+xcrun notarytool submit "$release_root/notarization.zip" "${auth[@]}" \
+    --wait --timeout 45m --output-format json > "$release_root/notarization.json" || status=$?
+if (( status != 0 )) || ! jq -e '.status == "Accepted"' "$release_root/notarization.json" > /dev/null; then
+    submission=$(jq -r '.id // empty' "$release_root/notarization.json" 2>/dev/null) || submission=''
+    if [[ -n "$submission" ]]; then
+        xcrun notarytool log "$submission" "${auth[@]}" "$release_root/notarization-log.json" \
+            && cat "$release_root/notarization-log.json"
+    fi
+    fail "Notarization was not accepted."
+fi
+xcrun stapler staple "$APP"
+xcrun stapler validate "$APP"
+codesign --verify --deep --strict "$APP"
+spctl --assess --type execute --verbose=4 "$APP"
+mkdir -p "$RELEASE_DIRECTORY"
+ditto -c -k --keepParent "$APP" "$RELEASE_DIRECTORY/Nark-${VERSION}-macOS.zip"
+cd "$RELEASE_DIRECTORY"
+shasum -a 256 "Nark-${VERSION}-macOS.zip" > "Nark-${VERSION}-macOS.zip.sha256"

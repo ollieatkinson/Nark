@@ -1,0 +1,19 @@
+#!/bin/bash
+#MISE description="Approve only the reviewed, pinned Swift macros and plugins"
+
+source "$(dirname "$0")/../../lib/release.sh"
+
+for name in macros plugins; do
+    jq -e --slurpfile pins Package.resolved '
+        all(.[]; . as $approval | any($pins[0].pins[];
+            .identity == $approval.packageIdentity and .state.revision == $approval.fingerprint
+        ))
+    ' ".github/package-trust/$name.json" > /dev/null \
+        || fail "Review updated package code and refresh .github/package-trust/$name.json before approving it."
+done
+
+destination="$HOME/Library/org.swift.swiftpm/security"
+mkdir -p "$destination"
+for name in macros plugins; do
+    cp ".github/package-trust/$name.json" "$destination/$name.json"
+done

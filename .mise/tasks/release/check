@@ -1,0 +1,30 @@
+#!/bin/bash
+#MISE description="Validate release inputs, credentials and version availability"
+
+source "$(dirname "$0")/../../lib/release.sh"
+
+validate_version
+require_env APPLE_TEAM_ID DEVELOPER_ID_P12_BASE64 DEVELOPER_ID_P12_PASSWORD \
+    APP_PROFILE_BASE64 FILTER_PROFILE_BASE64 NOTARY_KEY_BASE64 NOTARY_KEY_ID NOTARY_ISSUER_ID
+[[ "$APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]] || fail "APPLE_TEAM_ID must be a ten-character Apple Developer team ID."
+
+if [[ -n "${GITHUB_RUN_NUMBER:-}" ]]; then
+    require_env GITHUB_RUN_ATTEMPT
+    base=$(sed -nE 's/^CURRENT_PROJECT_VERSION = ([0-9]+)$/\1/p' Configuration/Project.xcconfig)
+    [[ "$base" =~ ^[0-9]{1,4}$ && "$GITHUB_RUN_NUMBER" =~ ^[0-9]{1,4}$ && "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]{1,2}$ ]] \
+        || fail "Build number exceeds CFBundleVersion component limits."
+    BUILD="$((10#$base + 10#$GITHUB_RUN_NUMBER)).$((10#$GITHUB_RUN_ATTEMPT))"
+fi
+validate_build
+
+if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}"; then
+    fail "This version already has a tag. Choose a new version."
+else
+    status=$?
+    [[ "$status" -eq 2 ]] || fail "Could not check existing release tags (git exited $status)."
+fi
+
+xcodebuild -version
+output version "$VERSION"
+output tag "v$VERSION"
+output build "$BUILD"

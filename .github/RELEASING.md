@@ -6,6 +6,24 @@ The workflow tests Nark, builds an Intel/Apple Silicon app with Xcode 27.2, sign
 
 Build numbers use the repository's `CURRENT_PROJECT_VERSION` plus the workflow run number, followed by the attempt number, for example `26.1`. Keep the repository counter increasing. Each run or retry gets a distinct filter Mach service, so overlapping extension versions don't share an endpoint.
 
+The workflow runs the Bash tasks in [`.mise/tasks/release`](../.mise/tasks/release) through mise. JSON checks use the pinned `jq`; no Python is needed. Run `mise tasks` to see the steps, or `mise run release:test` to check them with isolated fixtures and no signing credentials.
+
+To package locally, export the same credentials below, plus `VERSION` and a unique `BUILD` such as `26.1`, then run:
+
+```sh
+mise install
+mise run release:check
+mise run release:trust
+mise run test --jobs 2
+mise run release:sign
+mise run release:archive
+mise run release:verify
+mise run release:notarize
+mise run release:clean
+```
+
+Run `release:clean` even if archiving or notarization fails. It restores the previous keychain search list and any profiles replaced during signing. Local output goes into the ignored `dist/` directory. Publishing is a separate `release:publish` task; packaging alone doesn't create a GitHub release.
+
 ## One-time Apple setup
 
 The Apple Development identity used for local builds cannot sign public releases. Create:

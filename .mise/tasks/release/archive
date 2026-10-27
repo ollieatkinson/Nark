@@ -1,0 +1,20 @@
+#!/bin/bash
+#MISE description="Archive the universal app with Developer ID signing"
+
+source "$(dirname "$0")/../../lib/release.sh"
+
+validate_version
+validate_build
+require_env APPLE_TEAM_ID
+SIGNING_IDENTITY="${SIGNING_IDENTITY:-$(cat "$SIGNING_DIRECTORY/identity")}"
+APP_PROFILE="${APP_PROFILE:-$(cat "$SIGNING_DIRECTORY/app_profile")}"
+FILTER_PROFILE="${FILTER_PROFILE:-$(cat "$SIGNING_DIRECTORY/filter_profile")}"
+
+xcodebuild -project Nark.xcodeproj -scheme Nark -configuration Release -jobs 2 \
+    -destination 'generic/platform=macOS' -derivedDataPath "$release_root/DerivedData" \
+    -archivePath "$ARCHIVE_PATH" -xcconfig Configuration/Distribution.xcconfig \
+    -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile \
+    DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+    NARK_APP_PROVISIONING_PROFILE="$APP_PROFILE" NARK_FILTER_PROVISIONING_PROFILE="$FILTER_PROFILE" \
+    MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
+    ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO archive

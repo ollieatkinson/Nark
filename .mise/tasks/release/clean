@@ -1,0 +1,34 @@
+#!/bin/bash
+#MISE description="Remove release credentials and restore previous signing state"
+
+source "$(dirname "$0")/../../lib/release.sh"
+
+[[ -d "$SIGNING_DIRECTORY" ]] || exit 0
+status=0
+if [[ -f "$SIGNING_DIRECTORY/keychains" ]]; then
+    search=()
+    while IFS= read -r -d '' keychain; do
+        search+=("$keychain")
+    done < "$SIGNING_DIRECTORY/keychains"
+    security list-keychains -d user -s "${search[@]}" || status=1
+fi
+if [[ -e "$SIGNING_DIRECTORY/release.keychain-db" ]]; then
+    security delete-keychain "$SIGNING_DIRECTORY/release.keychain-db" || status=1
+fi
+for marker in "$SIGNING_DIRECTORY"/profiles/*.installed; do
+    [[ -f "$marker" ]] || continue
+    uuid="$(basename "$marker" .installed)"
+    validate_uuid "$uuid"
+    if [[ -f "$SIGNING_DIRECTORY/profiles/$uuid.backup" ]]; then
+        cp -p "$SIGNING_DIRECTORY/profiles/$uuid.backup" "$profiles_directory/$uuid.provisionprofile" || status=1
+    else
+        rm -f "$profiles_directory/$uuid.provisionprofile" || status=1
+    fi
+done
+if (( status == 0 )); then
+    rm -rf "$SIGNING_DIRECTORY"
+else
+    rm -f "$SIGNING_DIRECTORY/certificate.p12" "$SIGNING_DIRECTORY/notary.p8"
+    printf '%s\n' 'Signing cleanup failed; retained restoration metadata so release:clean can be retried.' >&2
+fi
+exit "$status"

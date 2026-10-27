@@ -1,0 +1,5 @@
+#!/bin/bash
+#MISE description="Exercise release validation, packaging and cleanup with isolated signing fixtures"
+
+set -euo pipefail
+exec /bin/bash "$(dirname "$0")/../../tests/release.sh"
