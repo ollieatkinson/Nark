@@ -3,12 +3,20 @@ swiftformat = { version = "0.64.3", no_app = true, rename_exe = "swiftformat" }
 
 [tasks.format]
 description = "Format owned Swift source"
-run = "Scripts/format.sh"
+run = [
+    "swiftformat Package.swift Sources Tests App --config .swiftformat --cache ignore --rules wrapClosureBodies",
+    "swiftformat Package.swift Sources Tests App --config .swiftformat --cache ignore",
+]
 
 [tasks."format:check"]
 description = "Check Swift formatting without writing files"
-run = "Scripts/format.sh --check"
+run = "swiftformat Package.swift Sources Tests App --config .swiftformat --cache ignore --lint"
 
 [tasks.test]
 description = "Check formatting and run Swift Testing"
-run = "Scripts/test.sh"
+depends = ["format:check"]
+run = "xcrun swift test --disable-sandbox"
+
+[tasks.build]
+description = "Build the signed Release app with Xcode"
+run = "xcodebuild -project Nark.xcodeproj -scheme Nark -configuration Release -destination 'platform=macOS' -derivedDataPath DerivedData build"

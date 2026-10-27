@@ -14,4 +14,11 @@ Boundaries reflect Natural Earth's de facto dataset.
 
 Country locations are approximate. Anycast, VPNs and relays can differ from physical endpoints.
 No IP addresses are sent to DB-IP or any other geolocation service.
-Refresh resources manually with Scripts/prepare-geography.py; the app never downloads updates.
+Resources are checked in and loaded directly; building the app requires no dataset conversion or downloads.
+
+Resource formats:
+- country-v4.bin: sorted, nonoverlapping 10-byte records: inclusive start address (4 bytes), inclusive end address (4 bytes), country code (2 ASCII bytes).
+- country-v6.bin: sorted, nonoverlapping 34-byte records: inclusive start address (16 bytes), inclusive end address (16 bytes), country code (2 ASCII bytes).
+- IP addresses use network byte order. Rows are sorted by start address.
+- world.bin: a 720 by 290 row-major grid of two-byte country codes; two spaces represent ocean. The grid covers longitude -180 to 180 and latitude 85 to -60, sampling each cell's centre. Country polygons use even-odd filling, including holes.
+- country-points.json: country-code keys mapped to latitude and longitude, taken from Natural Earth's LABEL_Y and LABEL_X properties. The mask and points use ISO_A2_EH country codes.
