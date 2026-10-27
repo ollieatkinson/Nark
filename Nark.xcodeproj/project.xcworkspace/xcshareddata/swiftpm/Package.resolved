@@ -11,6 +11,14 @@
       }
     },
     {
+      "identity" : "lexicon",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ollieatkinson/Lexicon",
+      "state" : {
+        "revision" : "104ed130265074ac701464f72e266ef326c59f8a"
+      }
+    },
+    {
       "identity" : "swift-algorithms",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-algorithms",

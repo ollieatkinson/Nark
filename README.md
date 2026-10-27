@@ -16,8 +16,6 @@ A macOS firewall and terminal network monitor. See where apps connect, block unw
 
 Requires macOS 15+, Xcode 27.2+ and [mise](https://mise.jdx.dev). Select that Xcode version before building, or set `DEVELOPER_DIR` in an ignored `mise.local.toml`.
 
-Clone [Lexicon](https://github.com/ollieatkinson/Lexicon) alongside this repository at `../Lexicon`.
-
 Copy `Configuration/Signing.example.xcconfig` to `Configuration/Signing.local.xcconfig` and set your Apple Developer team. Open `Nark.xcodeproj` to configure the app and extension's provisioning profiles.
 
 ```sh
@@ -49,6 +47,6 @@ mise run test
 mise run format
 ```
 
-The app logic lives in Swift packages; the Xcode project handles the app and system extension.
+The app logic lives in a Swift package; the Xcode project handles the app and system extension. For Lexicon development, add its checkout as a [local package in your Xcode workspace](https://developer.apple.com/documentation/xcode/editing-a-package-dependency-as-a-local-package). Keep the GitHub dependency in `Package.swift`.
 
 Map locations are approximate. [Geography data and attribution](Sources/Geography/Resources/Attribution.txt).

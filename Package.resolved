@@ -1,5 +1,5 @@
 {
-  "originHash" : "839f460159ea74ea399a9e72eef92b6292c5e27e88f6863f0637a822c4c75213",
+  "originHash" : "29b6e4796f4b97cc3effe4bf896e720e8755ba44b62a35974eb4200d634c91dc",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -8,6 +8,14 @@
       "state" : {
         "revision" : "114354e8c1667a2edc4993700fb9fa4f90157b56",
         "version" : "1.2.2"
+      }
+    },
+    {
+      "identity" : "lexicon",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ollieatkinson/Lexicon",
+      "state" : {
+        "revision" : "104ed130265074ac701464f72e266ef326c59f8a"
       }
     },
     {

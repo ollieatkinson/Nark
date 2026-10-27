@@ -20,7 +20,10 @@ let package = Package(
         .package(
             url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.26.2"
         ),
-        .package(path: "../Lexicon"),
+        .package(
+            url: "https://github.com/ollieatkinson/Lexicon",
+            revision: "104ed130265074ac701464f72e266ef326c59f8a"
+        ),
         .package(url: "https://github.com/apple/swift-argument-parser", exact: "1.8.2"),
         .package(url: "https://github.com/SwiftTUI/swift-tui", exact: "0.19.3"),
     ],
