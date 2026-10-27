@@ -6,16 +6,17 @@ import Testing
 
     typealias Peek = Firewall.Hostname.Inspection
     @Test func http_host_and_partial_headers() {
-        #expect(
-            Peek.inspect(Data("GET / HTTP/1.1\r\nHost: ExAmple.com:80\r\n\r\n".utf8))
-                == .hostname("example.com")
-        )
+        #expect(Peek.inspect(Data("GET / HTTP/1.1\r\nHost: ExAmple.com:80\r\n\r\n".utf8)) == .hostname("example.com"))
         #expect(Peek.inspect(Data("GET / HTTP/1.1\r\nHost:".utf8)) == .needMore)
         #expect(Peek.inspect(Data("SSH-2.0-test\r\n".utf8)) == .unavailable)
-        #expect(Peek.inspect(Data("POST / HTTP/1.1\r\nHost: upload.test\r\n\r\n".utf8) + Data([
-            0xff,
-            0xfe
-        ])) == .hostname("upload.test"))
+        #expect(Peek.inspect(
+            Data("POST / HTTP/1.1\r\nHost: upload.test\r\n\r\n".utf8) + Data(
+                [
+                    0xff,
+                    0xfe
+                ]
+            )
+        ) == .hostname("upload.test"))
     }
 
     @Test func chrome_shaped_hello_skips_grease_and_unknown_extensions() {
@@ -43,16 +44,13 @@ import Testing
         for size in 0 ..< record.count {
             #expect(Peek.inspect(Data(record.prefix(size))) == .needMore)
         }
-        let fragmented =
-            tlsRecord(Array(handshake.prefix(20))) + tlsRecord(Array(handshake.dropFirst(20)))
+        let fragmented = tlsRecord(Array(handshake.prefix(20))) + tlsRecord(Array(handshake.dropFirst(20)))
         #expect(Peek.inspect(Data(fragmented)) == .hostname("api.example.com"))
     }
 
     @Test func malformed_and_oversized_packets_do_not_crash_or_wait_forever() {
         #expect(Peek.inspect(Data([22, 3, 3, 255, 255])) == .unavailable)
-        #expect(
-            Peek.inspect(Data("GET ".utf8) + Data(repeating: 65, count: Peek.limit)) == .unavailable
-        )
+        #expect(Peek.inspect(Data("GET ".utf8) + Data(repeating: 65, count: Peek.limit)) == .unavailable)
         var generator = Generator()
         for size in 0 ..< 600 {
             let bytes = (0 ..< size).map { _ in UInt8.random(in: 0 ... 255, using: &generator) }
@@ -66,11 +64,13 @@ import Testing
         let entry = [UInt8(0)] + u16(name.count) + name
         let sni = u16(entry.count) + entry
         let ext = beforeSNI + u16(0) + u16(sni.count) + sni
-        let body =
-            [UInt8(3), 3] + [UInt8](repeating: 0, count: 32) + [0] + [0, 2, 0x13, 1] + [1, 0]
-                + u16(ext.count) + ext
+        let body = [UInt8(3), 3] + [UInt8](repeating: 0, count: 32) + [0] + [0, 2, 0x13, 1] + [1, 0]
+            + u16(ext.count) + ext
         return [
-            1, UInt8(body.count >> 16), UInt8((body.count >> 8) & 255), UInt8(body.count & 255),
+            1,
+            UInt8(body.count >> 16),
+            UInt8((body.count >> 8) & 255),
+            UInt8(body.count & 255),
         ]
             + body
     }

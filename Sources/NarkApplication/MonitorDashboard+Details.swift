@@ -36,8 +36,7 @@ struct FlowDetails: View {
                     }
                     property(
                         "Peer country",
-                        MonitorFeature.CountrySummary
-                            .name(session.store.locations[connection.address] ?? "ZZ")
+                        MonitorFeature.CountrySummary.name(session.store.locations[connection.address] ?? "ZZ")
                     )
                     if let address = connection.localAddress, let port = connection.localPort {
                         property(

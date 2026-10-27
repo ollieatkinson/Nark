@@ -71,22 +71,25 @@ import Testing
     ) throws {
         let runtime = try Firewall.Runtime()
         _ = runtime.handle(.add(try Firewall.Rule(app: "/app")))
-        let imported = runtime.handle(.blocklist(.replace(.init(
-            name: "Direction fixture",
-            source: "/directions.txt",
-            text: "peer.test"
-        ))))
-        let list = try #require(imported.snapshot?
-            .blocklists?
-            .first { $0.name == "Direction fixture" })
+        let imported = runtime.handle(
+            .blocklist(
+                .replace(
+                    .init(
+                        name: "Direction fixture",
+                        source: "/directions.txt",
+                        text: "peer.test"
+                    )
+                )
+            )
+        )
+        let list = try #require(imported.snapshot?.blocklists?.first { $0.name == "Direction fixture" })
         #expect(runtime.handle(.blocklist(.toggle(list.id))).error == nil)
         for direction in [Firewall.Direction.inbound, .unknown, .outbound] {
             let row = connection(direction)
             let decision = runtime.evaluate(row)
             #expect(decision.verdict == (direction == .outbound ? .drop : .allow))
             #expect(runtime.snapshot().blocks(row) == (direction == .outbound))
-            #expect((runtime.snapshot().blocklistMatches?[row.id.uuidString] != nil) ==
-                (direction == .outbound))
+            #expect((runtime.snapshot().blocklistMatches?[row.id.uuidString] != nil) == (direction == .outbound))
         }
         #expect(runtime.snapshot().totalAllowed == 2)
         #expect(runtime.snapshot().totalBlocked == 1)

@@ -13,8 +13,9 @@ extension NarkCommand {
 
     struct Disable: AsyncParsableCommand {
 
-        static let configuration =
-            CommandConfiguration(abstract: "Disable filtering, retaining the extension and rules.")
+        static let configuration = CommandConfiguration(
+            abstract: "Disable filtering, retaining the extension and rules."
+        )
 
         @MainActor func run() async throws {
             try await ExtensionControl.run(.disable)

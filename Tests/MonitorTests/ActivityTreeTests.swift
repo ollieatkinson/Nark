@@ -60,10 +60,9 @@ import Vocabulary
         state.snapshot = .init(rows: [first, second])
         state.locations = [first.address: "US"]
         let original = state.snapshot.rows
-        let destination = try #require(state.activityTree
-            .nodes
-            .values
-            .first { $0.kind == .destination && $0.title == "one.test" })
+        let destination = try #require(state.activityTree.nodes.values.first {
+            $0.kind == .destination && $0.title == "one.test"
+        })
         state.home.selection = destination.id
         #expect(state.homePresentation.selected.policy == .allow)
         state.snapshot.rules = [try .init(domain: "one.test")]
@@ -71,7 +70,7 @@ import Vocabulary
         #expect(blocked.selected.policy == .block)
         #expect(blocked.destinations.first?.blocked == 3)
         #expect(blocked.destinations.first?.focusedCount == 3)
-        let app = try #require(blocked.tree.nodes.values.first { $0.kind == .application })
+        let app = try #require(state.activityTree.nodes.values.first { $0.kind == .application })
         #expect(app.policy == .mixed)
         #expect(state.activityTree.nodes[destination.id]?.policy == .block)
         state.snapshot.rules[0].enabled = false
@@ -159,12 +158,9 @@ import Vocabulary
         let store = TestStore(initialState: initial) {
             MonitorFeature(client: .init(runtime: runtime))
         }
-        await store
-            .send(.blockDestination) {
-                $0
-                    .error =
-                    "Only outgoing connections use blocking rules. Incoming connections are observed."
-            }
+        await store.send(.blockDestination) {
+            $0.error = "Only outgoing connections use blocking rules. Incoming connections are observed."
+        }
         #expect(runtime.snapshot().rules.isEmpty)
     }
 
@@ -202,9 +198,7 @@ import Vocabulary
             address: "192.168.1.1"
         )
         let tree = ActivityTree(rows: [main, helper, daemon])
-        let app = try #require(tree.nodes
-            .values
-            .first { $0.kind == .application && $0.title == "Example" })
+        let app = try #require(tree.nodes.values.first { $0.kind == .application && $0.title == "Example" })
         #expect(app.connections == [main.id, helper.id])
         #expect(app.scope?.scope == .bundle)
         #expect(app.children.count == 2)
@@ -244,10 +238,7 @@ import Vocabulary
         #expect(Set(state.mapDestinations.filter(\.highlighted).map(\.code)) == ["US", "AU"])
         state.page = .activity
         #expect(Set(state.rows.map(\.id)) == [main.id, helper.id])
-        let leaf = try #require(state.activityTree
-            .nodes
-            .values
-            .first { $0.connection?.id == helper.id })
+        let leaf = try #require(state.activityTree.nodes.values.first { $0.connection?.id == helper.id })
         state.home.selection = leaf.id
         #expect(state.rows.map(\.id) == [helper.id])
         #expect(state.mapDestinations.filter(\.highlighted).map(\.code) == ["AU"])
@@ -263,25 +254,23 @@ import Vocabulary
         var initial = MonitorFeature.State()
         initial.snapshot = Firewall.Snapshot(rows: [row])
         let app = try #require(initial.activityTree.nodes.values.first { $0.kind == .application })
-        let leaf = try #require(initial.activityTree
-            .nodes
-            .values
-            .first { $0.connection?.id == row.id })
+        let leaf = try #require(initial.activityTree.nodes.values.first { $0.connection?.id == row.id })
         let store = TestStore(initialState: initial) {
             MonitorFeature(client: .init(runtime: runtime))
         }
-        await store.send(.toggleNode(app.id)) { $0.home.selection = app.id
+        await store.send(.toggleNode(app.id)) {
+            $0.home.selection = app.id
             $0.home.expanded.insert(app.id)
         }
-        await store.send(.activateNode(leaf.id)) { $0.home.selection = leaf.id
+        await store.send(.activateNode(leaf.id)) {
+            $0.home.selection = leaf.id
             $0.detail = row
         }
         await store.send(.closeDetail) { $0.detail = nil }
         #expect(store.state.home.selection == leaf.id)
         #expect(store.state.home.expanded.contains(app.id))
         let event = Event(nark.ux.monitor.home.tree.row[app.id].disclosure.event.select)
-        guard case .toggleNode(let id) = MonitorFeature.Session.action(for: event)
-        else {
+        guard case .toggleNode(let id) = MonitorFeature.Session.action(for: event) else {
             Issue.record("Disclosure lost its row context")
             return
         }

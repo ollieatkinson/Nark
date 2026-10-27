@@ -49,29 +49,21 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
 
     override func startFilter(completionHandler: @escaping @Sendable (Error?) -> Void) {
         do {
-            guard
-                let group = Bundle.main.object(forInfoDictionaryKey: "NarkAppGroup") as? String,
-                let directory = FileManager.default.containerURL(
-                    forSecurityApplicationGroupIdentifier: group
-                ),
-                let service = ExtensionConfiguration.serviceName()
-            else {
+            guard let group = Bundle.main.object(forInfoDictionaryKey: "NarkAppGroup") as? String,
+                  let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group),
+                  let service = ExtensionConfiguration.serviceName() else {
                 throw Firewall.Error.message("Missing app group or Mach service configuration.")
             }
             let engine = try Firewall.Runtime(
                 directory: directory.appendingPathComponent("Nark", isDirectory: true),
                 onHistoryFailure: { error in
-                    logger
-                        .error(
-                            "Activity restore failed: \(String(describing: error), privacy: .public)"
-                        )
+                    logger.error("Activity restore failed: \(String(describing: error), privacy: .public)")
                 }
             )
             let restored = engine.snapshot()
-            logger
-                .info(
-                    "Loaded \(restored.rules.count) rules and \(restored.rows.count) destinations from \(directory.path, privacy: .public)"
-                )
+            logger.info(
+                "Loaded \(restored.rules.count) rules and \(restored.rows.count) destinations from \(directory.path, privacy: .public)"
+            )
             let listener = NSXPCListener(machServiceName: service)
             listener.delegate = self
             let timer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
@@ -80,10 +72,7 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
                 self?.expireInspections(engine: engine)
                 do {
                     try engine.checkpoint()
-                    self?.logger
-                        .debug(
-                            "Activity checkpoint saved: \(engine.snapshot().rows.count) destinations"
-                        )
+                    self?.logger.debug("Activity checkpoint saved: \(engine.snapshot().rows.count) destinations")
                 } catch {
                     self?.logger.error("Activity checkpoint failed: \(error.localizedDescription)")
                 }
@@ -94,20 +83,21 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
             apply(NEFilterSettings(rules: [], defaultAction: .filterData)) {
                 [weak self, engine] error in
                 if let error {
-                    _ = try? engine.events.send(
-                        Event(nark.filter.lifecycle.fail.reason[error.localizedDescription])
-                    )
+                    _ = try? engine.events.send(Event(nark.filter.lifecycle.fail.reason[error.localizedDescription]))
                     self?.teardown()
                 } else {
                     _ = try? engine.events.send(Event(nark.filter.lifecycle.start))
                 }
                 completionHandler(error)
             }
-        } catch { completionHandler(error) }
+        } catch {
+            completionHandler(error)
+        }
     }
 
     override func stopFilter(
-        with reason: NEProviderStopReason, completionHandler: @escaping () -> Void
+        with reason: NEProviderStopReason,
+        completionHandler: @escaping () -> Void
     ) {
         teardown()
         completionHandler()
@@ -135,11 +125,9 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
     }
 
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
-        guard
-            let engine,
-            let team = Bundle.main.object(forInfoDictionaryKey: "NarkTeamID") as? String,
-            !team.isEmpty
-        else {
+        guard let engine,
+              let team = Bundle.main.object(forInfoDictionaryKey: "NarkTeamID") as? String,
+              !team.isEmpty else {
             return false
         }
         connection.setCodeSigningRequirement(
@@ -152,8 +140,7 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
     }
 
     override func handleNewFlow(_ flow: NEFilterFlow) -> NEFilterNewFlowVerdict {
-        guard let socket = flow as? NEFilterSocketFlow, let engine
-        else {
+        guard let socket = flow as? NEFilterSocketFlow, let engine else {
             return .allow()
         }
         let row = describe(socket)
@@ -164,11 +151,9 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
         if engine.isBlocked(app: row.app, host: row.host, address: row.address) {
             return reporting(engine.evaluate(row).verdict == .drop ? .drop() : .allow())
         }
-        let transport: Firewall.Hostname.Inspection.Session.Transport? =
-            socket.socketProtocol == IPPROTO_TCP
-                ? .tcp
-                : socket.socketProtocol == IPPROTO_UDP && ["443", "853"]
-                    .contains(row.port) ? .quic : nil
+        let transport: Firewall.Hostname.Inspection.Session.Transport? = socket.socketProtocol == IPPROTO_TCP
+            ? .tcp
+            : socket.socketProtocol == IPPROTO_UDP && ["443", "853"].contains(row.port) ? .quic : nil
         if row.host == nil, let transport {
             let admitted = inspections.withLock { pending in
                 guard pending.count < 256 else {
@@ -177,43 +162,46 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
                 pending[row.id] = Pending(flow: socket, connection: row, session: .init(transport))
                 return true
             }
-            guard admitted
-            else {
+            guard admitted else {
                 return reporting(engine.evaluate(row).verdict == .drop ? .drop() : .allow())
             }
-            return reporting(.filterDataVerdict(
-                withFilterInbound: false, peekInboundBytes: 0, filterOutbound: true,
-                peekOutboundBytes: Self.allFlowBytes
-            ))
+            return reporting(
+                .filterDataVerdict(
+                    withFilterInbound: false,
+                    peekInboundBytes: 0,
+                    filterOutbound: true,
+                    peekOutboundBytes: Self.allFlowBytes
+                )
+            )
         }
         return reporting(engine.evaluate(row).verdict == .drop ? .drop() : .allow())
     }
 
     override func handleOutboundData(
-        from flow: NEFilterFlow, readBytesStartOffset offset: Int, readBytes: Data
+        from flow: NEFilterFlow,
+        readBytesStartOffset offset: Int,
+        readBytes: Data
     ) -> NEFilterDataVerdict {
-        guard
-            let socket = flow as? NEFilterSocketFlow, flow.direction == .outbound,
-            let engine
-        else {
+        guard let socket = flow as? NEFilterSocketFlow,
+              flow.direction == .outbound,
+              let engine else {
             return .allow()
         }
-        let outcome: (Firewall.Connection, Firewall.Hostname.Inspection.Result)? = inspections
-            .withLock { pending in
-                guard var attempt = pending.removeValue(forKey: flow.identifier) else {
-                    return nil
-                }
-                let result = attempt.started.duration(to: .now) >= .seconds(5)
-                    ? .unavailable
-                    : attempt.session.inspect(readBytes, at: offset)
-                if result == .needMore {
-                    pending[flow.identifier] = attempt
-                }
-                if case .hostname(let host) = result {
-                    attempt.connection.host = host
-                }
-                return (attempt.connection, result)
+        let outcome: (Firewall.Connection, Firewall.Hostname.Inspection.Result)? = inspections.withLock { pending in
+            guard var attempt = pending.removeValue(forKey: flow.identifier) else {
+                return nil
             }
+            let result = attempt.started.duration(to: .now) >= .seconds(5)
+                ? .unavailable
+                : attempt.session.inspect(readBytes, at: offset)
+            if result == .needMore {
+                pending[flow.identifier] = attempt
+            }
+            if case .hostname(let host) = result {
+                attempt.connection.host = host
+            }
+            return (attempt.connection, result)
+        }
         // A timed-out attempt has already been evaluated by the expiry timer.
         guard let (row, result) = outcome else {
             return reporting(.allow())
@@ -221,38 +209,31 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
         if result == .needMore {
             // TCP retains its prefix until a verdict. Pass each UDP datagram so a
             // fragmented QUIC handshake can progress; inspect the next Initial.
-            return reporting(NEFilterDataVerdict(
-                passBytes: socket.socketProtocol == IPPROTO_UDP
-                    ? readBytes.count
-                    : 0,
-                peekBytes: Self.allFlowBytes
-            ))
+            return reporting(
+                NEFilterDataVerdict(
+                    passBytes: socket.socketProtocol == IPPROTO_UDP ? readBytes.count : 0,
+                    peekBytes: Self.allFlowBytes
+                )
+            )
         }
         return reporting(engine.evaluate(row).verdict == .drop ? .drop() : .allow())
     }
 
     override func handleOutboundDataComplete(for flow: NEFilterFlow) -> NEFilterDataVerdict {
-        if
-            let engine,
-            let pending = inspections.withLock({ $0.removeValue(forKey: flow.identifier) })
-        {
-            return reporting(engine.evaluate(pending.connection)
-                .verdict == .drop ? .drop() : .allow())
+        if let engine,
+           let pending = inspections.withLock({ $0.removeValue(forKey: flow.identifier) }) {
+            return reporting(engine.evaluate(pending.connection).verdict == .drop ? .drop() : .allow())
         }
         return .allow()
     }
 
     override func handle(_ report: NEFilterReport) {
-        guard
-            report.event == .statistics || report.event == .flowClosed,
-            let flow = report.flow
-        else {
+        guard report.event == .statistics || report.event == .flowClosed,
+              let flow = report.flow else {
             return
         }
-        if
-            report.event == .flowClosed,
-            let pending = inspections.withLock({ $0.removeValue(forKey: flow.identifier) })
-        {
+        if report.event == .flowClosed,
+           let pending = inspections.withLock({ $0.removeValue(forKey: flow.identifier) }) {
             _ = engine?.evaluate(pending.connection)
         }
         engine?.reportTraffic(
@@ -318,11 +299,13 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
             id: flow.identifier,
             app: Self.appPath(token: flow.sourceAppAuditToken),
             host: (flow.remoteHostname ?? flow.url?.host).flatMap(Firewall.Hostname.normalize),
-            address: address, port: port,
-            transport: flow.socketProtocol == IPPROTO_TCP
-                ? "TCP"
-                : flow.socketProtocol == IPPROTO_UDP ? "UDP" : "IP", blocked: false,
-            direction: direction, localAddress: localAddress, localPort: localPort
+            address: address,
+            port: port,
+            transport: flow.socketProtocol == IPPROTO_TCP ? "TCP" : flow.socketProtocol == IPPROTO_UDP ? "UDP" : "IP",
+            blocked: false,
+            direction: direction,
+            localAddress: localAddress,
+            localPort: localPort
         )
     }
 
@@ -332,15 +315,13 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
         }
         var code: SecCode?
         let attributes = [kSecGuestAttributeAudit: token] as CFDictionary
-        guard SecCodeCopyGuestWithAttributes(nil, attributes, [], &code) == errSecSuccess, let code
-        else {
+        guard SecCodeCopyGuestWithAttributes(nil, attributes, [], &code) == errSecSuccess, let code else {
             return "unknown"
         }
         var staticCode: SecStaticCode?
-        guard
-            SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode,
-            let executable = executablePath(for: staticCode)
-        else {
+        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess,
+              let staticCode,
+              let executable = executablePath(for: staticCode) else {
             return "unknown"
         }
         return executable
@@ -349,11 +330,9 @@ final class FilterDataProvider: NEFilterDataProvider, NSXPCListenerDelegate, @un
     private static func executablePath(for code: SecStaticCode) -> String? {
         // SecCodeCopyPath can return a bundle root. Rules target the actual executable.
         var information: CFDictionary?
-        guard
-            SecCodeCopySigningInformation(code, [], &information) == errSecSuccess,
-            let dictionary = information as? [String: Any],
-            let url = dictionary[kSecCodeInfoMainExecutable as String] as? URL
-        else {
+        guard SecCodeCopySigningInformation(code, [], &information) == errSecSuccess,
+              let dictionary = information as? [String: Any],
+              let url = dictionary[kSecCodeInfoMainExecutable as String] as? URL else {
             return nil
         }
         return url.path
@@ -374,7 +353,9 @@ private final class FilterService: NSObject, FirewallService {
                 throw Firewall.Error.message("Request exceeds size limit.")
             }
             result = engine.handle(try JSONDecoder().decode(Message.self, from: payload).request())
-        } catch { result = Firewall.Response(error: error.localizedDescription) }
+        } catch {
+            result = Firewall.Response(error: error.localizedDescription)
+        }
         reply((try? JSONEncoder().encode(result)) ?? Data())
     }
 }

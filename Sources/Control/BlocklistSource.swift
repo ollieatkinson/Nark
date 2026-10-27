@@ -11,14 +11,11 @@ public enum BlocklistSource {
         let name: String
         let canonical: String
         if let url = URL(string: source), url.scheme != nil {
-            guard
-                url.scheme?.lowercased() == "https", url.host != nil, url.user == nil,
-                url.password == nil
-            else {
-                throw Firewall.Error
-                    .message(
-                        "Use an HTTPS blocklist URL without credentials, or a local file path."
-                    )
+            guard url.scheme?.lowercased() == "https",
+                  url.host != nil,
+                  url.user == nil,
+                  url.password == nil else {
+                throw Firewall.Error.message("Use an HTTPS blocklist URL without credentials, or a local file path.")
             }
             guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
                 throw Firewall.Error.message("Invalid blocklist URL.")
@@ -28,8 +25,7 @@ public enum BlocklistSource {
             if components.percentEncodedPath.isEmpty {
                 components.percentEncodedPath = "/"
             }
-            guard let normalized = components.url
-            else {
+            guard let normalized = components.url else {
                 throw Firewall.Error.message("Invalid blocklist URL.")
             }
             let config = URLSessionConfiguration.ephemeral
@@ -42,58 +38,47 @@ public enum BlocklistSource {
             )
             defer { session.invalidateAndCancel() }
             let (bytes, response) = try await session.bytes(from: normalized)
-            guard
-                let response = response as? HTTPURLResponse,
-                (200 ... 299).contains(response.statusCode)
-            else {
+            guard let response = response as? HTTPURLResponse,
+                  (200 ... 299).contains(response.statusCode) else {
                 throw Firewall.Error.message("Blocklist download failed (HTTP response).")
             }
-            guard
-                response.url?.scheme == "https",
-                response.expectedContentLength <= Int64(limit)
-            else {
-                throw Firewall.Error
-                    .message("Blocklist exceeds 8 MB or redirected away from HTTPS.")
+            guard response.url?.scheme == "https",
+                  response.expectedContentLength <= Int64(limit) else {
+                throw Firewall.Error.message("Blocklist exceeds 8 MB or redirected away from HTTPS.")
             }
             var data = Data()
             data.reserveCapacity(min(limit, max(0, Int(response.expectedContentLength))))
             for try await byte in bytes {
-                guard data.count < limit
-                else {
+                guard data.count < limit else {
                     throw Firewall.Error.message("Blocklist exceeds 8 MB.")
                 }
                 data.append(byte)
             }
-            guard let decoded = String(data: data, encoding: .utf8)
-            else {
+            guard let decoded = String(data: data, encoding: .utf8) else {
                 throw Firewall.Error.message("Blocklist must be UTF-8 text.")
             }
             text = decoded
             name = url.host ?? "Blocklist"
             canonical = normalized.absoluteString
         } else {
-            let url = URL(fileURLWithPath: (source as NSString).expandingTildeInPath)
-                .standardizedFileURL
+            let url = URL(fileURLWithPath: (source as NSString).expandingTildeInPath).standardizedFileURL
             let file = try FileHandle(forReadingFrom: url)
             defer { try? file.close() }
             var data = Data()
             while let chunk = try file.read(upToCount: 64_000), !chunk.isEmpty {
-                guard data.count + chunk.count <= limit
-                else {
+                guard data.count + chunk.count <= limit else {
                     throw Firewall.Error.message("Blocklist exceeds 8 MB.")
                 }
                 data.append(chunk)
             }
-            guard let decoded = String(data: data, encoding: .utf8)
-            else {
+            guard let decoded = String(data: data, encoding: .utf8) else {
                 throw Firewall.Error.message("Blocklist must be UTF-8 text.")
             }
             text = decoded
             name = url.lastPathComponent
             canonical = url.path
         }
-        _ = try Firewall.Runtime
-            .parseBlocklist(text, limit: limit) // Fail before changing any provider state.
+        _ = try Firewall.Runtime.parseBlocklist(text, limit: limit) // Fail before changing any provider state.
         let preset = Firewall.Blocklist.community.first { $0.source == canonical }
         return .init(
             id: preset?.id,

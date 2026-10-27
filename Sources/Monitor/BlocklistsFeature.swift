@@ -8,11 +8,19 @@ import Foundation
     @ObservableState public struct State: Equatable {
 
         public var catalog = Firewall.Blocklist.presets.map(\.summary)
-        public var selection: UUID? = Firewall.Blocklist.presets.first?.id
+        public var selection: UUID? = Firewall.Blocklist.presets.first?.id {
+            didSet { selectionEvent = nil }
+        }
+
+        public var selectionEvent: UInt?
         public var detail: Firewall.Blocklist?
         public var query = ""
         public var communityVisible = false
-        public var communitySelection = Firewall.Blocklist.community[0].id
+        public var communitySelection = Firewall.Blocklist.community[0].id {
+            didSet { communitySelectionEvent = nil }
+        }
+
+        public var communitySelectionEvent: UInt?
         public var category: Firewall.Blocklist.Category?
         public var busy = false
         public var error: String?
@@ -20,9 +28,7 @@ import Foundation
         public var community: [Firewall.Blocklist.Community] {
             Firewall.Blocklist.community.filter {
                 (category.map($0.categories.contains) ?? true)
-                    &&
-                    (query.isEmpty || "\($0.name) \($0.description)"
-                        .localizedCaseInsensitiveContains(query))
+                    && (query.isEmpty || "\($0.name) \($0.description)".localizedCaseInsensitiveContains(query))
             }
         }
 
@@ -47,12 +53,12 @@ import Foundation
     }
 
     public enum Action: Sendable {
-        case select(UUID)
+        case select(UUID, event: UInt? = nil)
         case open(UUID)
         case close
         case showCommunity
         case cycleCategory
-        case selectCommunity(UUID)
+        case selectCommunity(UUID, event: UInt? = nil)
         case addCommunity(UUID)
         case addSelectedCommunity
         case toggle
@@ -83,8 +89,9 @@ import Foundation
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-                case .select(let id):
+                case .select(let id, let event):
                     state.selection = id
+                    state.selectionEvent = event
                     return .none
                 case .close:
                     state.detail = nil
@@ -95,19 +102,17 @@ import Foundation
                     state.detail = nil
                     state.error = nil
                     return .none
-                case .selectCommunity(let id):
+                case .selectCommunity(let id, let event):
                     state.communitySelection = id
+                    state.communitySelectionEvent = event
                     return .none
                 case .cycleCategory:
-                    let choices: [Firewall.Blocklist.Category?] = [nil] + Firewall.Blocklist
-                        .Category.allCases
-                        .map { Optional($0) }
-                    state
-                        .category =
-                        choices[((choices.firstIndex(of: state.category) ?? 0) + 1) % choices.count]
+                    let choices: [Firewall.Blocklist.Category?] = [nil] + Firewall.Blocklist.Category.allCases.map {
+                        Optional($0)
+                    }
+                    state.category = choices[((choices.firstIndex(of: state.category) ?? 0) + 1) % choices.count]
                     if !state.community.contains(where: { $0.id == state.communitySelection }) {
-                        state.communitySelection = state.community.first?.id ?? state
-                            .communitySelection
+                        state.communitySelection = state.community.first?.id ?? state.communitySelection
                     }
                     return .none
                 case .addSelectedCommunity:
@@ -116,10 +121,8 @@ import Foundation
                     }
                     return .send(.addCommunity(selected.id))
                 case .addCommunity(let id):
-                    guard
-                        !state.busy,
-                        let selected = Firewall.Blocklist.community.first(where: { $0.id == id })
-                    else {
+                    guard !state.busy,
+                          let selected = Firewall.Blocklist.community.first(where: { $0.id == id }) else {
                         return .none
                     }
                     if state.catalog.contains(where: { $0.id == id }) {
@@ -140,9 +143,13 @@ import Foundation
                     state.busy = true
                     state.error = nil
                     return .run { [client] send in
-                        do { await send(.loaded(try await client.blocklist(id))) }
-                        catch { await send(.failed(error.localizedDescription)) }
-                    }.cancellable(id: CancelID.operation)
+                        do {
+                            await send(.loaded(try await client.blocklist(id)))
+                        } catch {
+                            await send(.failed(error.localizedDescription))
+                        }
+                    }
+                    .cancellable(id: CancelID.operation)
                 case .loaded(let list):
                     state.detail = list
                     state.busy = false
@@ -153,10 +160,8 @@ import Foundation
                     }
                     state.busy = true
                     state.error = nil
-                    if
-                        case .toggle = action,
-                        selected.domainCount > 0
-                    {
+                    if case .toggle = action,
+                       selected.domainCount > 0 {
                         return mutate(.toggle(selected.id))
                     }
                     return fetch(
@@ -187,21 +192,13 @@ import Foundation
                         state.selection = selected
                         state.communityVisible = false
                     }
-                    if
-                        !catalog
-                            .contains(where: { $0.id == state.selection })
-                    {
+                    if !catalog.contains(where: { $0.id == state.selection }) {
                         state.selection = catalog.first?.id
                     }
-                    if
-                        let detail = state.detail,
-                        let summary = catalog.first(where: { $0.id == detail.id })
-                    {
+                    if let detail = state.detail,
+                       let summary = catalog.first(where: { $0.id == detail.id }) {
                         state.detail?.summary = summary
-                        if
-                            detail.summary.updatedAt != summary
-                                .updatedAt
-                        {
+                        if detail.summary.updatedAt != summary.updatedAt {
                             return .send(.open(detail.id))
                         }
                     } else {
@@ -223,8 +220,11 @@ import Foundation
                 input.id = id ?? input.id
                 input.enable = enable
                 await send(.fetched(input))
-            } catch { await send(.failed(error.localizedDescription)) }
-        }.cancellable(id: CancelID.operation, cancelInFlight: true)
+            } catch {
+                await send(.failed(error.localizedDescription))
+            }
+        }
+        .cancellable(id: CancelID.operation, cancelInFlight: true)
     }
 
     private func mutate(
@@ -234,11 +234,13 @@ import Foundation
         .run { [client] send in
             do {
                 let catalog = try await client.request(.blocklist(request)).blocklists ?? []
-                let selected = selectSource
-                    .flatMap { source in catalog.first { $0.source == source }?.id }
+                let selected = selectSource.flatMap { source in catalog.first { $0.source == source }?.id }
                 await send(.saved(catalog, selected: selected))
-            } catch { await send(.failed(error.localizedDescription)) }
-        }.cancellable(id: CancelID.operation)
+            } catch {
+                await send(.failed(error.localizedDescription))
+            }
+        }
+        .cancellable(id: CancelID.operation)
     }
 }
 

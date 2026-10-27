@@ -117,11 +117,9 @@ extension Firewall.Hostname {
                         guard n + size <= p + length else {
                             return .unavailable
                         }
-                        if
-                            type == 0,
-                            let raw = String(bytes: b[n ..< (n + size)], encoding: .utf8),
-                            let host = Firewall.Hostname.normalize(raw)
-                        {
+                        if type == 0,
+                           let raw = String(bytes: b[n ..< (n + size)], encoding: .utf8),
+                           let host = Firewall.Hostname.normalize(raw) {
                             return .hostname(host)
                         }
                         n += size
@@ -135,28 +133,39 @@ extension Firewall.Hostname {
 
         private static func http(_ b: [UInt8]) -> Result {
             let methods = [
-                "GET ", "POST ", "HEAD ", "PUT ", "DELETE ", "OPTIONS ", "PATCH ", "CONNECT ",
+                "GET ",
+                "POST ",
+                "HEAD ",
+                "PUT ",
+                "DELETE ",
+                "OPTIONS ",
+                "PATCH ",
+                "CONNECT ",
             ]
             let prefix = String(decoding: b.prefix(8), as: UTF8.self)
             guard methods.contains(where: { prefix.hasPrefix($0) || $0.hasPrefix(prefix) }) else {
                 return .unavailable
             }
-            guard let end = b.indices.dropLast(3).first(where: { b[$0 ..< ($0 + 4)].elementsEqual([
-                13,
-                10,
-                13,
-                10
-            ]) }) else {
+            guard let end = b.indices.dropLast(3).first(
+                where: {
+                    b[$0 ..< ($0 + 4)].elementsEqual(
+                        [
+                            13,
+                            10,
+                            13,
+                            10
+                        ]
+                    )
+                }
+            ) else {
                 return .needMore
             }
             // A binary request body must not invalidate a readable Host header.
-            guard let text = String(bytes: b.prefix(end), encoding: .utf8)
-            else {
+            guard let text = String(bytes: b.prefix(end), encoding: .utf8) else {
                 return .unavailable
             }
             for line in text.components(separatedBy: "\r\n").dropFirst() {
-                guard let colon = line.firstIndex(of: ":"), line[..<colon].lowercased() == "host"
-                else {
+                guard let colon = line.firstIndex(of: ":"), line[..<colon].lowercased() == "host" else {
                     continue
                 }
                 let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)

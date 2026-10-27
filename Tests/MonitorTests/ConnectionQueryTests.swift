@@ -37,19 +37,29 @@ import Vocabulary
     @Test func field_choices_distinguish_app_service_endpoints_and_current_policy() {
         let rows = rows()
         let cases: [(ConnectionQuery.Field, String, [Int])] = [
-            (.all, "example", [0, 1]), (.app, "Example Browser", [0, 1]),
-            (.app, "Network Service", []), (.service, "Network Service", [0, 2]),
-            (.service, "Example Browser", []), (.remote, "api.example", [0]),
-            (.remote, "192.0.2.1", [0, 2]), (.local, "8080", [1]), (.port, "443", [0, 2]),
-            (.type, "udp", [1]), (.dir, "incoming", [1]), (.dir, "↗", [0, 2]),
-            (.policy, "block", [0]), (.policy, "allow", [1, 2]),
+            (.all, "example", [0, 1]),
+            (.app, "Example Browser", [0, 1]),
+            (.app, "Network Service", []),
+            (.service, "Network Service", [0, 2]),
+            (.service, "Example Browser", []),
+            (.remote, "api.example", [0]),
+            (.remote, "192.0.2.1", [0, 2]),
+            (.local, "8080", [1]),
+            (.port, "443", [0, 2]),
+            (.type, "udp", [1]),
+            (.dir, "incoming", [1]),
+            (.dir, "↗", [0, 2]),
+            (.policy, "block", [0]),
+            (.policy, "allow", [1, 2]),
         ]
         for (field, text, expected) in cases {
             let filter = ConnectionQuery(text, field: field)
-            let matches = rows.indices.filter { index in filter.matches(
-                rows[index],
-                isBlocked: { index == 0 }
-            ) }
+            let matches = rows.indices.filter { index in
+                filter.matches(
+                    rows[index],
+                    isBlocked: { index == 0 }
+                )
+            }
             #expect(matches == expected, "\(field):\(text)")
         }
     }
@@ -61,10 +71,12 @@ import Vocabulary
             "application:\"Example Browser\" process:\"Network Service\" domain:api.example protocol:tcp direction:outbound",
             "service:\"Network Ser remote:unused", // An unfinished quoted value is literal, not another term.
         ] {
-            let matches = rows.indices.filter { index in ConnectionQuery(text).matches(
-                rows[index],
-                isBlocked: { index == 0 }
-            ) }
+            let matches = rows.indices.filter { index in
+                ConnectionQuery(text).matches(
+                    rows[index],
+                    isBlocked: { index == 0 }
+                )
+            }
             #expect(matches == (text.hasSuffix("unused") ? [] : [0]))
         }
         #expect(ConnectionQuery("service:\"Network Ser").matches(rows[0], isBlocked: { false }))
@@ -73,9 +85,13 @@ import Vocabulary
         #expect(ConnectionQuery("  ").matches(rows[0], isBlocked: { false }))
         #expect(ConnectionQuery("remote:").matches(rows[0], isBlocked: { false }))
         var lookups = 0
-        #expect(ConnectionQuery("api.example").matches(rows[0], isBlocked: { lookups += 1
-            return false
-        }))
+        #expect(ConnectionQuery("api.example").matches(
+            rows[0],
+            isBlocked: {
+                lookups += 1
+                return false
+            }
+        ))
         #expect(lookups == 0)
     }
 
@@ -84,31 +100,30 @@ import Vocabulary
         let runtime = try Firewall.Runtime()
         var state = MonitorFeature.State()
         state.snapshot = .init(rows: rows)
-        let app = try #require(state.activityTree
-            .nodes
-            .values
-            .first { $0.title == "Example Browser" })
+        let app = try #require(state.activityTree.nodes.values.first { $0.title == "Example Browser" })
         state.home.selection = app.id
         state.page = .activity
         let store = TestStore(initialState: state) {
             MonitorFeature(client: .init(runtime: runtime))
         }
         await store.send(.selectSearchField(.service)) { $0.searchField = .service }
-        await store.send(.search("no-such-service")) { $0.query = "no-such-service"
+        await store.send(.search("no-such-service")) {
+            $0.query = "no-such-service"
             $0.blocklists.query = "no-such-service"
         }
         #expect(store.state.rows.isEmpty)
         #expect(store.state.home.selection == app.id)
-        await store
-            .send(.received(.init(rows: rows, startedAt: state.snapshot.startedAt))) {
-                $0.connected = true
-            }
+        await store.send(.received(.init(rows: rows, startedAt: state.snapshot.startedAt))) {
+            $0.connected = true
+        }
         #expect(store.state.home.selection == app.id)
-        await store.send(.search("Network Service")) { $0.query = "Network Service"
+        await store.send(.search("Network Service")) {
+            $0.query = "Network Service"
             $0.blocklists.query = "Network Service"
         }
         #expect(store.state.rows.map(\.id) == [rows[0].id])
-        await store.send(.search("")) { $0.query = ""
+        await store.send(.search("")) {
+            $0.query = ""
             $0.blocklists.query = ""
         }
         #expect(Set(store.state.rows.map(\.id)) == Set(rows.prefix(2).map(\.id)))

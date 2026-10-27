@@ -6,9 +6,13 @@ public struct TerminalTextFormatStyle: FormatStyle {
     public init() {}
 
     public func format(_ value: String) -> String {
-        String(String.UnicodeScalarView(value.unicodeScalars.filter {
-            !CharacterSet.controlCharacters.contains($0)
-        }))
+        String(
+            String.UnicodeScalarView(
+                value.unicodeScalars.filter {
+                    !CharacterSet.controlCharacters.contains($0)
+                }
+            )
+        )
     }
 }
 

@@ -70,13 +70,17 @@ extension UI {
         }
     }
 
-    public struct Rule<Concept: L & I_nark_ui_component_rule>: View {
+    public struct Rule<Concept: L & I_nark_ui_component_rule>: View, Equatable {
 
         public let concept: K<Concept>
         public let rule: Firewall.Rule
         public init(_ concept: K<Concept>, rule: Firewall.Rule) {
             self.concept = concept
             self.rule = rule
+        }
+
+        nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.concept == rhs.concept && lhs.rule == rhs.rule
         }
 
         public var body: some View {

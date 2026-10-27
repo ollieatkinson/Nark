@@ -18,20 +18,23 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/pointfreeco/swift-composable-architecture", exact: "1.26.2"
+            url: "https://github.com/pointfreeco/swift-composable-architecture",
+            exact: "1.26.2"
         ),
         .package(
             url: "https://github.com/ollieatkinson/Lexicon",
             revision: "104ed130265074ac701464f72e266ef326c59f8a"
         ),
         .package(url: "https://github.com/apple/swift-argument-parser", exact: "1.8.2"),
+        .package(url: "https://github.com/pointfreeco/swift-issue-reporting", exact: "2.1.2"),
         .package(url: "https://github.com/SwiftTUI/swift-tui", exact: "0.19.3"),
     ],
     targets: [
         .target(name: "Geography", resources: [.process("Resources")]),
         .target(name: "Firewall", dependencies: ["Vocabulary"]),
         .target(
-            name: "Vocabulary", dependencies: [.product(name: "SwiftLexicon", package: "Lexicon")],
+            name: "Vocabulary",
+            dependencies: [.product(name: "SwiftLexicon", package: "Lexicon")],
             exclude: ["nark.lexicon"],
             plugins: [.plugin(name: "SwiftLibraryGeneratorPlugin", package: "Lexicon")]
         ),
@@ -39,21 +42,33 @@ let package = Package(
         .target(
             name: "Monitor",
             dependencies: [
-                "Firewall", "Control", "Vocabulary", "Geography",
+                "Firewall",
+                "Control",
+                "Vocabulary",
+                "Geography",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ]
         ),
         .target(name: "Recording", dependencies: ["Firewall"]),
-        .target(name: "NarkUI", dependencies: [
-            "Vocabulary",
-            "Firewall",
-            "Geography",
-            .product(name: "SwiftTUI", package: "swift-tui")
-        ]),
+        .target(
+            name: "NarkUI",
+            dependencies: [
+                "Vocabulary",
+                "Firewall",
+                "Geography",
+                .product(name: "SwiftTUI", package: "swift-tui")
+            ]
+        ),
         .target(
             name: "NarkApplication",
             dependencies: [
-                "Firewall", "Monitor", "Control", "Vocabulary", "NarkUI", "Recording", "Geography",
+                "Firewall",
+                "Monitor",
+                "Control",
+                "Vocabulary",
+                "NarkUI",
+                "Recording",
+                "Geography",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
                 .product(name: "SwiftTUI", package: "swift-tui"),
@@ -64,7 +79,9 @@ let package = Package(
         .target(name: "NarkExtension", dependencies: ["Firewall", "Control", "Vocabulary"]),
         .executableTarget(name: "nark", dependencies: ["NarkApplication"], path: "App/Nark"),
         .executableTarget(
-            name: "NarkFilter", dependencies: ["NarkExtension"], path: "App/NarkFilter"
+            name: "NarkFilter",
+            dependencies: ["NarkExtension"],
+            path: "App/NarkFilter"
         ),
         .target(name: "TestSupport", dependencies: ["Control", "Firewall"], path: "Tests/Support"),
         .testTarget(
@@ -79,6 +96,7 @@ let package = Package(
                 "Geography",
                 "TestSupport",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "IssueReportingTestSupport", package: "swift-issue-reporting"),
                 .product(name: "SwiftTUICLI", package: "swift-tui"),
                 .product(name: "SwiftTUI", package: "swift-tui")
             ]
@@ -87,19 +105,23 @@ let package = Package(
         .testTarget(name: "RecordingTests", dependencies: ["Recording", "Firewall"]),
         .testTarget(
             name: "FirewallTests",
-            dependencies: ["Firewall"], resources: [.copy("Fixtures")]
+            dependencies: ["Firewall"],
+            resources: [.copy("Fixtures")]
         ),
         .testTarget(
             name: "MonitorTests",
             dependencies: [
-                "Monitor", "TestSupport",
+                "Monitor",
+                "TestSupport",
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+                .product(name: "IssueReportingTestSupport", package: "swift-issue-reporting"),
             ]
         ),
         .testTarget(
             name: "ControlTests",
             dependencies: [
-                "Control", "Vocabulary",
+                "Control",
+                "Vocabulary",
             ]
         ),
     ],

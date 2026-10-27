@@ -56,10 +56,8 @@ public struct ConnectionQuery: Equatable, Sendable {
             return
         }
         terms = Self.tokens(value).map { token in
-            if
-                let colon = token.firstIndex(of: ":"),
-                let field = Field.named(String(token[..<colon]))
-            {
+            if let colon = token.firstIndex(of: ":"),
+               let field = Field.named(String(token[..<colon])) {
                 return Term(field: field, value: String(token[token.index(after: colon)...]))
             }
             return Term(field: .all, value: token)

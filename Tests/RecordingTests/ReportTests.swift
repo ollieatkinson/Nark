@@ -14,17 +14,19 @@ import Testing
             (.inbound, "8080"),
             (.inbound, "9090")
         ] {
-            _ = runtime.evaluate(.init(
-                app: app.path,
-                host: "peer.test",
-                address: "192.0.2.1",
-                port: "443",
-                transport: "TCP",
-                blocked: false,
-                direction: direction,
-                localAddress: "192.0.2.2",
-                localPort: port
-            ))
+            _ = runtime.evaluate(
+                .init(
+                    app: app.path,
+                    host: "peer.test",
+                    address: "192.0.2.1",
+                    port: "443",
+                    transport: "TCP",
+                    blocked: false,
+                    direction: direction,
+                    localAddress: "192.0.2.2",
+                    localPort: port
+                )
+            )
         }
         var summary = RecordingSummary(initial)
         try summary.append(runtime.recording(.stop(.init(id: initial.id, after: 0))))
@@ -36,8 +38,7 @@ import Testing
         #expect(report.markdown().contains("| Incoming | peer.test |"))
         #expect(report.markdown().contains("| Outgoing | peer.test |"))
         #expect(report.markdown().contains("8080"))
-        let json = try #require(JSONSerialization
-            .jsonObject(with: JSONEncoder().encode(report)) as? [String: Any])
+        let json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(report)) as? [String: Any])
         let destinations = try #require(json["destinations"] as? [[String: Any]])
         #expect(Set(destinations.compactMap { $0["direction"] as? String }) == [
             "inbound",
@@ -58,9 +59,7 @@ import Testing
         )
         runtime.record(row)
         let initial = try runtime.recording(.start(app))
-        let directory = FileManager.default
-            .temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let journal = try RecordingJournal(directory: directory, initial: initial)
         runtime.record(row)
@@ -92,19 +91,22 @@ import Testing
             contentsOf: directory.appendingPathComponent("report.md"),
             encoding: .utf8
         ).contains("3 observed connections"))
-        let json = try JSONSerialization
-            .jsonObject(with: Data(contentsOf: directory
-                    .appendingPathComponent("report.json"))) as! [String: Any]
+        let json = try JSONSerialization.jsonObject(
+            with: Data(contentsOf: directory.appendingPathComponent("report.json"))
+        ) as! [String: Any]
         #expect(json["status"] as? String == "complete")
         for name in ["connections.jsonl", "report.md", "report.json"] {
-            let attributes = try FileManager.default
-                .attributesOfItem(atPath: directory.appendingPathComponent(name).path)
+            let attributes = try FileManager.default.attributesOfItem(
+                atPath: directory.appendingPathComponent(name).path
+            )
             #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
         }
-        #expect(throws: (any Error).self) { try RecordingJournal(
-            directory: directory,
-            initial: initial
-        ) }
+        #expect(throws: (any Error).self) {
+            try RecordingJournal(
+                directory: directory,
+                initial: initial
+            )
+        }
     }
 
     @Test func stopped_sessions_are_complete_only_after_all_pages_are_drained() throws {
@@ -112,14 +114,16 @@ import Testing
         let app = try Firewall.Application(path: "/app", scope: .executable)
         let initial = try runtime.recording(.start(app))
         for _ in 0 ..< 600 {
-            runtime.record(.init(
-                app: app.path,
-                host: "example.test",
-                address: "192.0.2.1",
-                port: "443",
-                transport: "TCP",
-                blocked: false
-            ))
+            runtime.record(
+                .init(
+                    app: app.path,
+                    host: "example.test",
+                    address: "192.0.2.1",
+                    port: "443",
+                    transport: "TCP",
+                    blocked: false
+                )
+            )
         }
         var summary = RecordingSummary(initial)
         var batch = try runtime.recording(.stop(.init(id: initial.id, after: 0)))
@@ -136,31 +140,35 @@ import Testing
 
     @Test func interrupted_recording_keeps_a_readable_partial_report() throws {
         let runtime = try Firewall.Runtime()
-        let initial = try runtime.recording(.start(try Firewall.Application(
-            path: "/app",
-            scope: .executable
-        )))
-        let directory = FileManager.default
-            .temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
+        let initial = try runtime.recording(
+            .start(
+                try Firewall.Application(
+                    path: "/app",
+                    scope: .executable
+                )
+            )
+        )
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let journal = try RecordingJournal(directory: directory, initial: initial)
-        runtime.record(.init(
-            app: "/app",
-            host: "<untrusted>|site.test",
-            address: "192.0.2.1",
-            port: "443",
-            transport: "TCP",
-            blocked: false
-        ))
+        runtime.record(
+            .init(
+                app: "/app",
+                host: "<untrusted>|site.test",
+                address: "192.0.2.1",
+                port: "443",
+                transport: "TCP",
+                blocked: false
+            )
+        )
         try journal.append(runtime.recording(.read(.init(id: initial.id, after: 0))))
         try journal.finish(error: "filter restarted")
         #expect(journal.report.status == .incomplete)
         #expect(journal.report.observedConnections == 1)
         #expect(journal.report.markdown().contains("\\<untrusted\\>\\|site.test"))
-        let json = try JSONSerialization
-            .jsonObject(with: Data(contentsOf: directory
-                    .appendingPathComponent("report.json"))) as! [String: Any]
+        let json = try JSONSerialization.jsonObject(
+            with: Data(contentsOf: directory.appendingPathComponent("report.json"))
+        ) as! [String: Any]
         #expect(json["error"] as? String == "filter restarted")
     }
 
@@ -169,14 +177,16 @@ import Testing
         let app = try Firewall.Application(path: "/app", scope: .executable)
         let initial = try runtime.recording(.start(app))
         for _ in 0 ..< 4100 {
-            runtime.record(.init(
-                app: app.path,
-                host: nil,
-                address: "192.0.2.1",
-                port: "443",
-                transport: "TCP",
-                blocked: false
-            ))
+            runtime.record(
+                .init(
+                    app: app.path,
+                    host: nil,
+                    address: "192.0.2.1",
+                    port: "443",
+                    transport: "TCP",
+                    blocked: false
+                )
+            )
         }
         var summary = RecordingSummary(initial)
         var batch = try runtime.recording(.stop(.init(id: initial.id, after: 0)))

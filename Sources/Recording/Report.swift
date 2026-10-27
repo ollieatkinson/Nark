@@ -72,10 +72,9 @@ public struct RecordingReport: Codable, Sendable {
             "| --- | --- | --- | --- | --- | --- | ---: | ---: | --- | --- | --- |"
         ]
         for d in destinations {
-            lines
-                .append(
-                    "| \(d.direction.name) | \(Self.cell(d.host ?? d.address)) | \(Self.cell(d.address)) | \(Self.cell(d.port)) | \(Self.cell(d.localPort ?? "—")) | \(Self.cell(d.transport)) | \(d.allowed) | \(d.blocked) | \(Self.time(d.firstSeen)) | \(Self.time(d.lastSeen)) | \(Self.cell(d.executable)) |"
-                )
+            lines.append(
+                "| \(d.direction.name) | \(Self.cell(d.host ?? d.address)) | \(Self.cell(d.address)) | \(Self.cell(d.port)) | \(Self.cell(d.localPort ?? "—")) | \(Self.cell(d.transport)) | \(d.allowed) | \(d.blocked) | \(Self.time(d.firstSeen)) | \(Self.time(d.lastSeen)) | \(Self.cell(d.executable)) |"
+            )
         }
         lines += [
             "",
@@ -139,11 +138,11 @@ public struct RecordingSummary {
     }
 
     public mutating func append(_ batch: Firewall.Recording.Batch) throws {
-        guard
-            batch.id == initial.id, batch.application == initial.application,
-            batch.cursor >= cursor, batch.lastSequence >= batch.cursor,
-            batch.startedAt == initial.startedAt
-        else {
+        guard batch.id == initial.id,
+              batch.application == initial.application,
+              batch.cursor >= cursor,
+              batch.lastSequence >= batch.cursor,
+              batch.startedAt == initial.startedAt else {
             throw Firewall.Error.message("Mismatched recording batch.")
         }
         var expected = cursor + 1
@@ -153,10 +152,8 @@ public struct RecordingSummary {
         }
         expected = first
         for entry in batch.entries {
-            guard
-                entry.sequence == expected,
-                initial.application.matches(entry.connection.app)
-            else {
+            guard entry.sequence == expected,
+                  initial.application.matches(entry.connection.app) else {
                 throw Firewall.Error.message("Invalid recording entry.")
             }
             expected += 1
@@ -174,16 +171,22 @@ public struct RecordingSummary {
                 port: c.port,
                 transport: c.transport,
                 direction: c.direction,
-                localAddress: c.direction == .inbound
-                    ? c.localAddress
-                    : nil,
+                localAddress: c.direction == .inbound ? c.localAddress : nil,
                 localPort: c.direction == .inbound ? c.localPort : nil
             )
             var d = destinations[key] ?? RecordingReport.Destination(
-                executable: c.app, host: c.host, address: c.address, port: c.port,
+                executable: c.app,
+                host: c.host,
+                address: c.address,
+                port: c.port,
                 transport: c.transport,
-                direction: c.direction, localAddress: key.localAddress, localPort: key.localPort,
-                allowed: 0, blocked: 0, firstSeen: entry.time, lastSeen: entry.time
+                direction: c.direction,
+                localAddress: key.localAddress,
+                localPort: key.localPort,
+                allowed: 0,
+                blocked: 0,
+                firstSeen: entry.time,
+                lastSeen: entry.time
             )
             if c.blocked {
                 d.blocked += 1
@@ -222,10 +225,7 @@ public struct RecordingSummary {
             missingConnections: missing,
             error: failure,
             destinations: destinations.values.sorted {
-                if
-                    $0.connections != $1
-                        .connections
-                {
+                if $0.connections != $1.connections {
                     return $0.connections > $1.connections
                 }
                 return [
@@ -237,17 +237,18 @@ public struct RecordingSummary {
                     $0.direction.rawValue,
                     $0.localAddress ?? "",
                     $0.localPort ?? ""
-                ]
-                .lexicographicallyPrecedes([
-                    $1.host ?? $1.address,
-                    $1.executable,
-                    $1.address,
-                    $1.port,
-                    $1.transport,
-                    $1.direction.rawValue,
-                    $1.localAddress ?? "",
-                    $1.localPort ?? ""
-                ])
+                ].lexicographicallyPrecedes(
+                    [
+                        $1.host ?? $1.address,
+                        $1.executable,
+                        $1.address,
+                        $1.port,
+                        $1.transport,
+                        $1.direction.rawValue,
+                        $1.localAddress ?? "",
+                        $1.localPort ?? ""
+                    ]
+                )
             }
         )
     }

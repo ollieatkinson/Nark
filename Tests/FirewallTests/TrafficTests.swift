@@ -33,16 +33,19 @@ import Testing
 
 @Test func old_checkpoints_decode_without_new_traffic_fields() throws {
     let runtime = try Firewall.Runtime()
-    runtime.record(Firewall.Connection(
-        app: "/app",
-        host: nil,
-        address: "192.0.2.1",
-        port: "443",
-        transport: "TCP",
-        blocked: false
-    ))
-    var object = try #require(JSONSerialization
-        .jsonObject(with: JSONEncoder().encode(runtime.snapshot())) as? [String: Any])
+    runtime.record(
+        Firewall.Connection(
+            app: "/app",
+            host: nil,
+            address: "192.0.2.1",
+            port: "443",
+            transport: "TCP",
+            blocked: false
+        )
+    )
+    var object = try #require(
+        JSONSerialization.jsonObject(with: JSONEncoder().encode(runtime.snapshot())) as? [String: Any]
+    )
     object.removeValue(forKey: "traffic")
     let decoded = try JSONDecoder().decode(
         Firewall.Snapshot.self,

@@ -22,7 +22,8 @@ extension Firewall {
             historyURL = directory?.appendingPathComponent("history.json")
             if let directory {
                 try FileManager.default.createDirectory(
-                    at: directory, withIntermediateDirectories: true,
+                    at: directory,
+                    withIntermediateDirectories: true,
                     attributes: [.posixPermissions: 0o700]
                 )
             }
@@ -30,7 +31,8 @@ extension Firewall {
             if let rulesURL, FileManager.default.fileExists(atPath: rulesURL.path) {
                 rules = try JSONDecoder()
                     .decode(
-                        [Firewall.Rule].self, from: Data(contentsOf: rulesURL)
+                        [Firewall.Rule].self,
+                        from: Data(contentsOf: rulesURL)
                     )
                     .map { try $0.validated() }
             } else {
@@ -48,9 +50,11 @@ extension Firewall {
                     snapshot.totalBlocked = old.totalBlocked
                 } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
                     // A new installation has no activity checkpoint yet.
-                } catch { onHistoryFailure(error) }
+                } catch {
+                    onHistoryFailure(error)
+                }
             }
-            state = Mutex(snapshot)
+            state = Mutex(snapshot.normalizingConnectionIDs())
             blocklists = Mutex(try Firewall.BlocklistStore(directory: directory))
         }
 
@@ -59,35 +63,38 @@ extension Firewall {
             snapshot.traffic = traffic.withLock { $0.summary }
             blocklists.withLock { store in
                 snapshot.blocklists = store.lists.map(\.summary)
-                snapshot
-                    .blocklistMatches = Dictionary(uniqueKeysWithValues: snapshot.rows
-                        .compactMap { row in
-                            guard row.direction == .outbound else {
-                                return nil
-                            }
-                            return store.match(host: row.host, address: row.address).map { (
+                snapshot.blocklistMatches = Dictionary(
+                    uniqueKeysWithValues: snapshot.rows.compactMap { row in
+                        guard row.direction == .outbound else {
+                            return nil
+                        }
+                        return store.match(host: row.host, address: row.address).map {
+                            (
                                 row.id.uuidString,
                                 $0
-                            ) }
-                        })
+                            )
+                        }
+                    }
+                )
             }
             return snapshot
         }
 
         public func reportTraffic(id: UUID, received: Int64, sent: Int64, closed: Bool) {
-            guard let (connection, delta) = traffic.withLock({ $0.report(
-                id: id,
-                received: received,
-                sent: sent,
-                closed: closed
-            ) }) else {
+            guard let (connection, delta) = traffic.withLock(
+                {
+                    $0.report(
+                        id: id,
+                        received: received,
+                        sent: sent,
+                        closed: closed
+                    )
+                }
+            ) else {
                 return
             }
             state.withLock { state in
-                if
-                    let index = state.rows
-                        .firstIndex(where: { $0.sharesDestination(with: connection) })
-                {
+                if let index = state.rows.firstIndex(where: { $0.sharesDestination(with: connection) }) {
                     state.rows[index].traffic = (state.rows[index].traffic ?? .init()) + delta
                 }
             }
@@ -112,9 +119,11 @@ extension Firewall {
                 return Firewall.Decision(verdict: .allow)
             }
             return state.withLock { state in
-                if let rule = state.rules.first(where: {
-                    $0.matches(app: app, host: host, address: address, direction: direction)
-                }) {
+                if let rule = state.rules.first(
+                    where: {
+                        $0.matches(app: app, host: host, address: address, direction: direction)
+                    }
+                ) {
                     return Firewall.Decision(verdict: .drop, rule: rule.id)
                 }
                 if let list = blocklists.withLock({ $0.match(host: host, address: address) }) {
@@ -126,7 +135,9 @@ extension Firewall {
 
         public func evaluate(_ connection: Firewall.Connection) -> Firewall.Decision {
             let decision = decision(
-                app: connection.app, host: connection.host, address: connection.address,
+                app: connection.app,
+                host: connection.host,
+                address: connection.address,
                 direction: connection.direction
             )
             var connection = connection
@@ -155,9 +166,11 @@ extension Firewall {
                 } else {
                     state.totalAllowed += 1
                 }
-                if let i = state.rows.firstIndex(where: {
-                    $0.sharesDestination(with: row)
-                }) {
+                if let i = state.rows.firstIndex(
+                    where: {
+                        $0.sharesDestination(with: row)
+                    }
+                ) {
                     var existing = state.rows.remove(at: i)
                     existing.count += 1
                     existing.lastSeen = row.lastSeen
@@ -165,7 +178,11 @@ extension Firewall {
                     existing.localPort = row.localPort
                     state.rows.insert(existing, at: 0)
                 } else {
-                    state.rows.insert(row, at: 0)
+                    var aggregate = row
+                    if state.rows.contains(where: { $0.id == aggregate.id }) {
+                        aggregate.id = UUID()
+                    }
+                    state.rows.insert(aggregate, at: 0)
                 }
                 if state.rows.count > 2000 {
                     state.rows.removeLast(state.rows.count - 2000)
@@ -185,19 +202,23 @@ extension Firewall {
             if case .blocklist(let request) = request {
                 do {
                     if case .read(let id) = request {
-                        guard let list = blocklists.withLock({ $0.lists.first { $0.id == id } })
-                        else {
+                        guard let list = blocklists.withLock({ $0.lists.first { $0.id == id } }) else {
                             throw Firewall.Error.message("Blocklist no longer exists.")
                         }
                         return Firewall.Response(blocklist: list)
                     }
                     try blocklists.withLock { try $0.apply(request) }
                     return Firewall.Response(snapshot: snapshot())
-                } catch { return Firewall.Response(error: error.localizedDescription) }
+                } catch {
+                    return Firewall.Response(error: error.localizedDescription)
+                }
             }
             if case .recording(let request) = request {
-                do { return Firewall.Response(recording: try recording(request)) }
-                catch { return Firewall.Response(error: error.localizedDescription) }
+                do {
+                    return Firewall.Response(recording: try recording(request))
+                } catch {
+                    return Firewall.Response(error: error.localizedDescription)
+                }
             }
             do {
                 try state.withLock { state in
@@ -210,11 +231,8 @@ extension Firewall {
                             return
                         case .add(let rule):
                             let rule = try rule.validated()
-                            if
-                                !rules
-                                    .contains(where: { $0.app == rule.app && $0.domain == rule.domain }
-                                    )
-                            {
+                            if !rules.contains(where: { $0.app == rule.app && $0.domain == rule.domain }
+                            ) {
                                 rules.append(rule)
                             }
                         case .remove(let id):
@@ -227,9 +245,7 @@ extension Firewall {
                         case .importDomains(let text):
                             let domains = try Self.parseBlocklist(text)
                             for domain in domains
-                                where !rules
-                                .contains(where: { $0.app == nil && $0.domain == domain })
-                            {
+                                where !rules.contains(where: { $0.app == nil && $0.domain == domain }) {
                                 rules.append(try Firewall.Rule(domain: domain))
                             }
                         case .clearHistory:
@@ -250,7 +266,9 @@ extension Firewall {
                     state.rules = rules
                 }
                 return Firewall.Response(snapshot: snapshot())
-            } catch { return Firewall.Response(error: error.localizedDescription) }
+            } catch {
+                return Firewall.Response(error: error.localizedDescription)
+            }
         }
 
         public func recording(_ request: Firewall.Recording.Request) throws -> Firewall.Recording.Batch {
@@ -259,8 +277,7 @@ extension Firewall {
                 sessions = sessions.filter { !$0.value.expired(at: now) }
                 switch request {
                     case .start(let application):
-                        guard sessions.count < 8
-                        else {
+                        guard sessions.count < 8 else {
                             throw Firewall.Error.message("Too many active recordings.")
                         }
                         var session = Firewall.Recording.Session(
@@ -272,10 +289,9 @@ extension Firewall {
                         return batch
                     case .read(let cursor), .stop(let cursor):
                         guard var session = sessions[cursor.id] else {
-                            throw Firewall.Error
-                                .message(
-                                    "Recording expired or the filter restarted. The saved log is incomplete."
-                                )
+                            throw Firewall.Error.message(
+                                "Recording expired or the filter restarted. The saved log is incomplete."
+                            )
                         }
                         if case .stop = request {
                             session.endedAt = session.endedAt ?? now
@@ -313,37 +329,30 @@ extension Firewall {
             var result = Set<String>()
             for (index, line) in text.components(separatedBy: .newlines).enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-                if
-                    trimmed.hasPrefix("!") || ["[Adblock Plus]", "[Adblock Plus 2.0]"]
-                        .contains(trimmed)
-                {
+                if trimmed.hasPrefix("!") || ["[Adblock Plus]", "[Adblock Plus 2.0]"].contains(trimmed) {
                     continue
                 }
                 if trimmed.hasPrefix("||"), trimmed.hasSuffix("^") {
                     let raw = String(trimmed.dropFirst(2).dropLast())
-                    guard
-                        !raw.contains(where: { "/*^$|@".contains($0) }),
-                        let domain = Firewall.Hostname.normalize(raw),
-                        domain == raw.lowercased()
-                    else {
-                        throw Firewall.Error
-                            .message("Unsupported anchored domain rule on line \(index + 1).")
+                    guard !raw.contains(where: { "/*^$|@".contains($0) }),
+                          let domain = Firewall.Hostname.normalize(raw),
+                          domain == raw.lowercased() else {
+                        throw Firewall.Error.message("Unsupported anchored domain rule on line \(index + 1).")
                     }
                     result.insert(domain)
                     continue
                 }
                 let fields = line.split(
-                    separator: "#", maxSplits: 1, omittingEmptySubsequences: false
-                )[0]
-                    .split(whereSeparator: { $0.isWhitespace })
+                    separator: "#",
+                    maxSplits: 1,
+                    omittingEmptySubsequences: false
+                )[0].split(whereSeparator: { $0.isWhitespace })
                 if fields.isEmpty {
                     continue
                 }
                 let names: ArraySlice<Substring>
-                if
-                    fields.count > 1
-                    && ["0.0.0.0", "127.0.0.1", "::", "::1"].contains(String(fields[0]))
-                {
+                if fields.count > 1
+                    && ["0.0.0.0", "127.0.0.1", "::", "::1"].contains(String(fields[0])) {
                     names = fields.dropFirst()
                 } else if fields.count == 1 {
                     names = fields[...]

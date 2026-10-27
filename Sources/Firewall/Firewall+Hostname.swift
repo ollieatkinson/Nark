@@ -25,20 +25,20 @@ extension Firewall {
                     return nil
                 }
                 return String(
-                    decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self
+                    decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) },
+                    as: UTF8.self
                 )
             }
             let labels = value.split(separator: ".", omittingEmptySubsequences: false)
-            guard
-                labels.allSatisfy({ label in
+            guard labels.allSatisfy(
+                { label in
                     !label.isEmpty && label.utf8.count <= 63 && label.first != "-"
                         && label.last != "-"
                         && label.utf8.allSatisfy {
-                            (97 ... 122).contains($0) || (48 ... 57)
-                                .contains($0) || $0 == 45 || $0 == 95
+                            (97 ... 122).contains($0) || (48 ... 57).contains($0) || $0 == 45 || $0 == 95
                         }
-                })
-            else {
+                }
+            ) else {
                 return nil
             }
             return value

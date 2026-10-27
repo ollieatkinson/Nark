@@ -31,33 +31,37 @@ extension MonitorFeature {
 extension MonitorFeature.State {
 
     public var trafficScope: String? {
-        (selectedApplication ?? focusedNode?.scope?.path ?? application?.path)
-            .map { URL(fileURLWithPath: $0).lastPathComponent }
+        (selectedApplication ?? focusedNode?.scope?.path ?? application?.path).map {
+            URL(fileURLWithPath: $0).lastPathComponent
+        }
     }
 
     public var trafficSamples: [MonitorFeature.Activity.Sample] {
-        let paths = selectedApplication.map { Set([$0]) }
-            ?? (home.selection == ActivityTree.all ? nil : Set(focusedRows.map(\.app)))
-            ?? application
-            .map { app in Set(snapshot.rows.filter { app.matches($0.app) }.map(\.app)) }
-        return activity.samples(for: paths)
+        if let selectedApplication {
+            return content.samplesByApplication[selectedApplication, default: []]
+        }
+        return content.list.focus(home.selection).samples
     }
 
     public var countries: [MonitorFeature.CountrySummary] {
         Dictionary(grouping: rows, by: { locations[$0.address] ?? "ZZ" })
-            .map { MonitorFeature.CountrySummary(
-                code: $0.key,
-                flows: $0.value.reduce(0) { $0 + $1.count }
-            ) }
+            .map {
+                MonitorFeature.CountrySummary(
+                    code: $0.key,
+                    flows: $0.value.reduce(0) { $0 + $1.count }
+                )
+            }
             .sorted { $0.flows == $1.flows ? $0.code < $1.code : $0.flows > $1.flows }
     }
 
     public func matchingRules(for connection: Firewall.Connection) -> [Firewall.Rule] {
-        snapshot.rules.filter { $0.matches(
-            app: connection.app,
-            host: connection.host,
-            address: connection.address,
-            direction: connection.direction
-        ) }
+        snapshot.rules.filter {
+            $0.matches(
+                app: connection.app,
+                host: connection.host,
+                address: connection.address,
+                direction: connection.direction
+            )
+        }
     }
 }

@@ -17,8 +17,9 @@ extension NarkCommand {
 
     struct Block: FilterCommand {
 
-        static let configuration =
-            CommandConfiguration(abstract: "Block a domain or IP, optionally for one executable.")
+        static let configuration = CommandConfiguration(
+            abstract: "Block a domain or IP, optionally for one executable."
+        )
 
         @Argument(help: "The domain or IP address to block. Domains include subdomains.")
         var domain: String

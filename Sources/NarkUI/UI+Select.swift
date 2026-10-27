@@ -39,17 +39,19 @@ extension UI {
         public var body: some View {
             HStack(spacing: 1) {
                 ForEach(options, id: \.value) { option in
-                    Text(option.value == selection
-                        ? "[\(option.title.formatted(.terminalText))]"
-                        : option.title.formatted(.terminalText))
-                        .foregroundStyle(option.value == selection ? .theme.tint : .theme.muted)
-                        .lineLimit(1)
-                        .accessibilityRole(.button)
-                        .accessibilityLabel(option.title + (option.value == selection ? ", selected" : ""))
-                        .onTapGesture {
-                            send(control.selecting(option.value))
-                        }
-                        .disabled(option.value == selection || !isEnabled)
+                    Text(
+                        option.value == selection
+                            ? "[\(option.title.formatted(.terminalText))]"
+                            : option.title.formatted(.terminalText)
+                    )
+                    .foregroundStyle(option.value == selection ? .theme.tint : .theme.muted)
+                    .lineLimit(1)
+                    .accessibilityRole(.button)
+                    .accessibilityLabel(option.title + (option.value == selection ? ", selected" : ""))
+                    .onTapGesture {
+                        send(control.selecting(option.value))
+                    }
+                    .disabled(option.value == selection || !isEnabled)
                 }
             }
             .disabled(!send.isEnabled || !isEnabled)

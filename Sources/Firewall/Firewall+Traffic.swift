@@ -52,10 +52,8 @@ extension Firewall {
             if summary.applications[row.app] == nil {
                 summary.applications[row.app] = .init()
             }
-            if
-                flows.count >= 32_768,
-                let oldest = flows.min(by: { $0.value.updatedAt < $1.value.updatedAt })?.key
-            {
+            if flows.count >= 32_768,
+               let oldest = flows.min(by: { $0.value.updatedAt < $1.value.updatedAt })?.key {
                 flows.removeValue(forKey: oldest)
                 summary.untrackedFlows += 1
             }
@@ -71,10 +69,7 @@ extension Firewall {
             guard var flow = flows[id] else {
                 return nil
             }
-            guard
-                summary.applications[flow.connection.app] != nil || summary.applications
-                    .count < 4096
-            else {
+            guard summary.applications[flow.connection.app] != nil || summary.applications.count < 4096 else {
                 flows.removeValue(forKey: id)
                 summary.untrackedFlows += 1
                 return nil

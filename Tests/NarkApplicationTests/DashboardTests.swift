@@ -1,6 +1,7 @@
 import Control
 import Firewall
 import Foundation
+import IssueReportingTestSupport
 import Monitor
 @testable import NarkApplication
 import NarkUI
@@ -66,11 +67,7 @@ import Vocabulary
         incoming.localPort = "8080"
         let session = MonitorFeature.Session(client: .init(runtime: runtime))
         session.store.send(.received(.init(rows: [outgoing, incoming])))
-        let app = try #require(session.store
-            .activityTree
-            .nodes
-            .values
-            .first { $0.kind == .application })
+        let app = try #require(session.store.activityTree.nodes.values.first { $0.kind == .application })
         session.store.send(.toggleNode(app.id))
         func render(height: Int? = nil) -> String {
             let h = height ?? size.1
@@ -117,11 +114,13 @@ import Vocabulary
         session.store.send(.show(.activity))
         let output = RenderOnce.render(
             MonitorDashboard(session: session).terminalViewport(width: size.0, height: size.1),
-            width: size.0, environment: [
+            width: size.0,
+            environment: [
                 "NO_COLOR": "1",
                 "TERM": "xterm-256color",
                 "LANG": "en_US.UTF-8"
-            ], isStdoutTTY: false
+            ],
+            isStdoutTTY: false
         )
         #expect(output.contains("NARK"))
         #expect(output.contains("connections"))
@@ -153,16 +152,18 @@ import Vocabulary
         let counter = Counter()
         let items = (0 ..< 2000).map { Item(id: String($0)) }
         let events = Events()
-        let list = UI
-            .List(
-                items,
-                row: nark.ux.monitor.connections.row,
-                id: \.id,
-                selection: "0"
-            ) { _, item in
-                counter.rows += 1
-                return Text("row \(item.id)")
-            }.events(events) { Issue.record($0) }.frame(width: 80, height: 12)
+        let list = UI.List(
+            items,
+            row: nark.ux.monitor.connections.row,
+            id: \.id,
+            selection: "0",
+            height: 12
+        ) { _, item in
+            counter.rows += 1
+            return Text("row \(item.id)")
+        }
+        .events(events) { Issue.record($0) }
+        .frame(width: 80, height: 12)
         let output = RenderOnce.render(
             list,
             width: 80,
@@ -196,10 +197,7 @@ import Vocabulary
             MonitorDashboard(session: session).terminalViewport(width: size.0, height: size.1),
             proposal: .init(width: size.0, height: size.1)
         )
-        let collectionIssues = frame.diagnostics
-            .runtime
-            .issues
-            .filter { $0.code.hasPrefix("collection.") }
+        let collectionIssues = frame.diagnostics.runtime.issues.filter { $0.code.hasPrefix("collection.") }
         #expect(collectionIssues.isEmpty, "\(collectionIssues)")
         #expect(frame.diagnostics.work.layoutDependentRealizations == 0)
         #expect(frame.diagnostics.work.layoutDependentMainActorFallbacks == 0)
@@ -406,11 +404,15 @@ extension DashboardTests {
         )
         let session = MonitorFeature.Session(client: .init(runtime: runtime))
         session.store.send(.received(.init(rows: [main, helper, other])))
-        session.store.send(.located([
-            main.address: "US",
-            helper.address: "AU",
-            other.address: "DE"
-        ]))
+        session.store.send(
+            .located(
+                [
+                    main.address: "US",
+                    helper.address: "AU",
+                    other.address: "DE"
+                ]
+            )
+        )
         func render() -> String {
             RenderOnce.render(
                 MonitorDashboard(session: session).terminalViewport(width: size.0, height: size.1),
@@ -429,16 +431,12 @@ extension DashboardTests {
         #expect(home.contains("▸ Example"))
         #expect(!home.contains("Helper"))
         #expect(!home.contains("This Mac"))
-        let app = try #require(session.store
-            .activityTree
-            .nodes
-            .values
-            .first { $0.kind == .application && $0.title == "Example" })
-        let service = try #require(session.store
-            .activityTree
-            .nodes
-            .values
-            .first { $0.kind == .service && $0.title == "Helper" })
+        let app = try #require(session.store.activityTree.nodes.values.first {
+            $0.kind == .application && $0.title == "Example"
+        })
+        let service = try #require(session.store.activityTree.nodes.values.first {
+            $0.kind == .service && $0.title == "Helper"
+        })
         session.store.send(.toggleNode(app.id))
         #expect(render().contains("▸ Helper"))
         session.store.send(.toggleNode(service.id))
@@ -457,12 +455,18 @@ extension DashboardTests {
         let runtime = try Firewall.Runtime()
         let preset = Firewall.Blocklist.presets[0].summary
         let text = (0 ..< 20000).map { String(format: "ad-%05d.test", $0) }.joined(separator: "\n")
-        #expect(runtime.handle(.blocklist(.replace(.init(
-            id: preset.id,
-            name: preset.name,
-            source: preset.source,
-            text: text
-        ))))
+        #expect(runtime.handle(
+            .blocklist(
+                .replace(
+                    .init(
+                        id: preset.id,
+                        name: preset.name,
+                        source: preset.source,
+                        text: text
+                    )
+                )
+            )
+        )
         .error == nil)
         let list = try #require(runtime.handle(.blocklist(.read(preset.id))).blocklist)
         let session = MonitorFeature.Session(client: .init(runtime: runtime))
@@ -512,10 +516,11 @@ extension DashboardTests {
 private extension View {
 
     func terminalViewport(width: Int, height: Int) -> some View {
-        environment(\.terminalSize, CellSize(width: width, height: height)).frame(
-            width: width,
-            height: height
-        )
+        environment(\.terminalSize, CellSize(width: width, height: height))
+            .frame(
+                width: width,
+                height: height
+            )
     }
 }
 
@@ -527,7 +532,8 @@ extension DashboardTests {
                 Array(0 ..< count),
                 row: nark.ux.monitor.connections.row,
                 id: \.self,
-                selection: 0
+                selection: 0,
+                height: 10
             ) { _, item in
                 Text("item \(item)")
             }

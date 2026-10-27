@@ -8,7 +8,7 @@ extension MonitorFeature {
         public let path: String
         public let destinationCount: Int
         public let flowCount: Int
-        public let recentFlows: Double
+        public private(set) var recentFlows: Double
         public let blockedCount: Int
         public var id: String {
             path
@@ -16,6 +16,22 @@ extension MonitorFeature {
 
         public var name: String {
             URL(fileURLWithPath: path).lastPathComponent
+        }
+
+        func updatingRecentFlows(_ recent: Double) -> Self {
+            var summary = self
+            summary.recentFlows = recent
+            return summary
+        }
+
+        static func precedes(_ lhs: Self, _ rhs: Self) -> Bool {
+            if lhs.recentFlows != rhs.recentFlows {
+                return lhs.recentFlows > rhs.recentFlows
+            }
+            if lhs.flowCount != rhs.flowCount {
+                return lhs.flowCount > rhs.flowCount
+            }
+            return lhs.path < rhs.path
         }
 
         init(path: String, rows: [Firewall.Connection], recentFlows: Double = 0) {

@@ -71,14 +71,14 @@ import Vocabulary
             MonitorFeature(client: .init(runtime: runtime))
         }
         let event = Event(nark.ux.monitor.connections.row[b.id.uuidString].event.activate)
-        guard case .openConnection(let id) = MonitorFeature.Session.action(for: event)
-        else {
+        guard case .openConnection(let id) = MonitorFeature.Session.action(for: event) else {
             Issue.record("Missing inherited activation")
             return
         }
         await store.send(.openConnection(id)) { $0.detail = b }
         let updated = Firewall.Snapshot(rows: [b, a])
-        await store.send(.received(updated)) { $0.snapshot = updated
+        await store.send(.received(updated)) {
+            $0.snapshot = updated
             $0.selection = 0
         }
         await store.send(.closeDetail) { $0.detail = nil }

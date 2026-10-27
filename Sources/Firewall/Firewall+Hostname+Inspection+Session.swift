@@ -27,8 +27,7 @@ extension Firewall.Hostname.Inspection {
             }
             let bytes = Array(data.prefix(limit - offset))
             let overlap = min(prefix.count - offset, bytes.count)
-            guard prefix[offset ..< (offset + overlap)].elementsEqual(bytes.prefix(overlap))
-            else {
+            guard prefix[offset ..< (offset + overlap)].elementsEqual(bytes.prefix(overlap)) else {
                 return .unavailable
             }
             prefix += bytes.dropFirst(overlap)

@@ -39,8 +39,9 @@ extension NarkCommand {
 
     struct ShowBlocklist: FilterCommand {
 
-        static let configuration =
-            CommandConfiguration(abstract: "Inspect a blocklist's domains, source and attribution.")
+        static let configuration = CommandConfiguration(
+            abstract: "Inspect a blocklist's domains, source and attribution."
+        )
 
         @Argument(help: "The blocklist UUID.", transform: NarkCommand.identifier)
         var id: UUID

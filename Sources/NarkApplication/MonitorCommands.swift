@@ -34,10 +34,11 @@ import Vocabulary
 
     let session: MonitorFeature.Session
     var send: UI.EventAction {
-        UI
-            .EventAction(events: session.events) { [session] in
-                session.store.send(.failed($0.localizedDescription))
-            }
+        UI.EventAction(
+            events: session.events
+        ) { [session] in
+            session.store.send(.failed($0.localizedDescription))
+        }
     }
 
     func handle(_ key: KeyEvent) -> Bool {
@@ -68,18 +69,12 @@ import Vocabulary
             case .character("x"):
                 event = UI.Control(nark.ux.monitor.block.connection).select
             case .escape:
-                if
-                    session.store.rulesVisible &&
-                    (session.store.blocklists.detail != nil || session.store.blocklists.communityVisible)
-                {
+                if session.store.rulesVisible
+                    && (session.store.blocklists.detail != nil || session.store.blocklists.communityVisible) {
                     event = UI.Control(nark.ux.monitor.blocklists.close).select
-                } else if
-                    session.store.detail != nil
-                {
+                } else if session.store.detail != nil {
                     event = UI.Control(nark.ux.monitor.detail.close).select
-                } else if
-                    session.store.page == .activity || session.store.rulesVisible
-                {
+                } else if session.store.page == .activity || session.store.rulesVisible {
                     event = UI.Control(nark.ux.monitor.view.home).select
                 } else {
                     send(UI.Control(nark.ux.monitor.search).changing(""))
@@ -103,11 +98,11 @@ import Vocabulary
         }
     }
 
-    func treeKey(_ key: KeyPress) -> KeyPressResult {
+    func treeKey(_ key: KeyPress, selection: String? = nil) -> KeyPressResult {
         guard key.modifiers.isEmpty else {
             return .ignored
         }
-        let row = nark.ux.monitor.home.tree.row[session.store.home.selection]
+        let row = nark.ux.monitor.home.tree.row[selection ?? session.store.home.selection]
         switch key.key {
             case .arrowRight:
                 send(Event(row.event.expand))

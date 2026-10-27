@@ -41,10 +41,7 @@ public final class RecordingJournal {
             attributes: [.posixPermissions: 0o700]
         )
         guard mkdir(directory.path, 0o700) == 0 else {
-            if
-                errno ==
-                EEXIST
-            {
+            if errno == EEXIST {
                 throw Firewall.Error.message("Report directory already exists: \(directory.path)")
             }
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
@@ -67,12 +64,14 @@ public final class RecordingJournal {
             var container = encoder.singleValueContainer()
             try container.encode(RecordingReport.time(date))
         }
-        try write(Line(
-            kind: .started,
-            recording: id,
-            time: initial.startedAt,
-            application: initial.application
-        ))
+        try write(
+            Line(
+                kind: .started,
+                recording: id,
+                time: initial.startedAt,
+                application: initial.application
+            )
+        )
         try handle.synchronize()
         try checkpoint()
     }
@@ -93,12 +92,14 @@ public final class RecordingJournal {
         var next = summary
         try next.append(batch)
         if batch.dropped > 0 {
-            try write(Line(
-                kind: .gap,
-                recording: id,
-                time: batch.entries.first?.time ?? Date(),
-                missing: batch.dropped
-            ))
+            try write(
+                Line(
+                    kind: .gap,
+                    recording: id,
+                    time: batch.entries.first?.time ?? Date(),
+                    missing: batch.dropped
+                )
+            )
         }
         for entry in batch.entries {
             try write(Line(kind: .connection, recording: id, time: entry.time, entry: entry))

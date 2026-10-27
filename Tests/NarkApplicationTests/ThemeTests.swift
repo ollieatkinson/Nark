@@ -15,10 +15,15 @@ import Vocabulary
             foregroundColor: theme.foreground,
             backgroundColor: theme.background,
             tintColor: theme.tint,
-            palette: .init(indexedColors: [
-                1: theme.danger, 2: theme.success, 3: theme.warning,
-                4: theme.link, 6: theme.info,
-            ]),
+            palette: .init(
+                indexedColors: [
+                    1: theme.danger,
+                    2: theme.success,
+                    3: theme.warning,
+                    4: theme.link,
+                    6: theme.info,
+                ]
+            ),
             colorSchemeContrast: .standard,
             source: .override
         )
@@ -42,13 +47,17 @@ import Vocabulary
 
     @Test func explicit_presets_remain_available_as_shape_styles() throws {
         let light = DefaultRenderer().render(
-            Text("X").foregroundStyle(.light.foreground).background(.light.background)
+            Text("X")
+                .foregroundStyle(.light.foreground)
+                .background(.light.background)
         )
         let dark = DefaultRenderer().render(
-            Text("X").foregroundStyle(.dark.foreground).background(.dark.background)
+            Text("X")
+                .foregroundStyle(.dark.foreground)
+                .background(.dark.background)
         )
-        #expect(light.rasterSurface.cells[0][0].style?.foregroundColor?.hexString() ==
-            Theme.light.foreground.hexString())
+        #expect(light.rasterSurface.cells[0][0].style?.foregroundColor?.hexString()
+            == Theme.light.foreground.hexString())
         #expect(dark.rasterSurface.cells[0][0].style?.foregroundColor?.hexString() == Theme.dark.foreground.hexString())
     }
 
@@ -66,8 +75,12 @@ import Vocabulary
             )
             let cell = try #require(frame.rasterSurface.cells.joined().first { $0.character == "N" })
             let ink = try #require(cell.style?.foregroundColor)
-            #expect(cell.style?.backgroundColor?.hexString() == theme.background.hexString())
-            #expect(ink.contrastRatio(to: theme.background) >= 4.5)
+            // No explicit cell paint means the detected terminal background is inherited.
+            let background = cell.style?.backgroundColor ?? theme.background
+            #expect(background.hexString() == theme.background.hexString())
+            #expect(ink.contrastRatio(
+                to: theme.background
+            ) >= 4.5)
         }
     }
 
@@ -95,5 +108,25 @@ import Vocabulary
         )
         let marker = try #require(map.rasterSurface.cells.joined().first { $0.character == "●" })
         #expect(marker.style?.foregroundColor?.hexString() == resolved.danger.hexString())
+    }
+
+    @Test(arguments: [false, true])
+    func terminal_background_inherits_defaults_and_honours_reduce_transparency(opaque: Bool) throws {
+        let theme = Theme.light
+        let frame = DefaultRenderer().render(
+            Text("NARK")
+                .foregroundStyle(.theme.foreground)
+                .modifier(UI.TerminalBackground())
+                .frame(width: 20, height: 4)
+                .environment(\.terminalAppearance, appearance(theme))
+                .environment(\.accessibilityPreferences, .init(reduceTransparency: opaque)),
+            proposal: .init(width: 20, height: 4)
+        )
+        let cell = try #require(frame.rasterSurface.cells.joined().first { $0.character == "N" })
+        if opaque {
+            #expect(cell.style?.backgroundColor?.hexString() == theme.background.hexString())
+        } else {
+            #expect(cell.style?.backgroundColor == nil)
+        }
     }
 }

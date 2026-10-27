@@ -2,17 +2,19 @@ import Geography
 import Testing
 
 @Test func offline_lookup_handles_public_private_mapped_ipv6_and_invalid_addresses() async throws {
-    let results = try await Database.locate([
-        "8.8.8.8",
-        "2001:4860:4860::8888",
-        "192.168.1.2",
-        "::1",
-        "fe80::1%en0",
-        "::ffff:192.168.1.2",
-        "nonsense",
-        "",
-        "224.0.0.1"
-    ])
+    let results = try await Database.locate(
+        [
+            "8.8.8.8",
+            "2001:4860:4860::8888",
+            "192.168.1.2",
+            "::1",
+            "fe80::1%en0",
+            "::ffff:192.168.1.2",
+            "nonsense",
+            "",
+            "224.0.0.1"
+        ]
+    )
     #expect(results["8.8.8.8"] == "US")
     #expect(results["2001:4860:4860::8888"] == "CA")
     for local in ["192.168.1.2", "::1", "fe80::1%en0", "::ffff:192.168.1.2"] {

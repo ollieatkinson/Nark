@@ -30,26 +30,24 @@ struct BlocklistCatalog: View {
                 session.store.blocklists.catalog,
                 row: nark.ux.monitor.blocklists.row,
                 id: \.id.uuidString,
-                selection: session.store.blocklists.selection?.uuidString
+                selection: session.store.blocklists.selection?.uuidString,
+                height: max(1, height - 5),
+                selectionEvent: session.store.blocklists.selectionEvent
             ) { _, list in
                 UI.Columns(.connection) {
                     Text(list.name.formatted(.terminalText))
                 } middle: {
                     Text(list.domainCount == 0 ? "—" : "\(list.domainCount)")
                         .foregroundStyle(.theme.muted)
-                } trailing: { Text(list.enabled ? "ON" : "OFF")
-                    .foregroundStyle(list.enabled
-                        ? .theme.success
-                        : .theme.muted)
+                } trailing: {
+                    Text(list.enabled ? "ON" : "OFF")
+                        .foregroundStyle(list.enabled ? .theme.success : .theme.muted)
                 }
             }
-            .frame(height: max(1, height - 5))
             .onKeyPress {
                 commands.blocklistKey($0)
             }
-            if
-                let error = session.store.blocklists.error
-            {
+            if let error = session.store.blocklists.error {
                 Text(error.formatted(.terminalText))
                     .foregroundStyle(.theme.danger)
                     .lineLimit(1)
@@ -76,26 +74,28 @@ struct BlocklistBrowser: View {
             accent: .theme.tint
         ) {
             if let list = session.store.blocklists.detail {
-                Text(list.summary.name.formatted(.terminalText) + " · \(list.domains.count) domains · " +
-                    (list.summary.enabled
-                        ? "ON"
-                        : "OFF"))
-                    .bold()
+                Text(
+                    list.summary.name.formatted(.terminalText) + " · \(list.domains.count) domains · "
+                        + (list.summary.enabled ? "ON" : "OFF")
+                )
+                .bold()
                 Text(list.summary.source.formatted(.terminalText))
                     .foregroundStyle(.theme.muted)
                     .lineLimit(2)
                 Text(list.summary.attribution.formatted(.terminalText))
                     .foregroundStyle(.theme.muted)
                     .lineLimit(1)
-                Text(list.summary.updatedAt.map { "Updated " + $0.formatted(
-                    date: .abbreviated,
-                    time: .shortened
-                ) } ?? "Not downloaded yet")
-                    .foregroundStyle(.theme.muted)
-                    .lineLimit(1)
-                if
-                    list.domains.isEmpty
-                {
+                Text(
+                    list.summary.updatedAt.map {
+                        "Updated " + $0.formatted(
+                            date: .abbreviated,
+                            time: .shortened
+                        )
+                    } ?? "Not downloaded yet"
+                )
+                .foregroundStyle(.theme.muted)
+                .lineLimit(1)
+                if list.domains.isEmpty {
                     Text("Press u to download this list.")
                         .foregroundStyle(.theme.muted)
                 } else {
@@ -105,9 +105,7 @@ struct BlocklistBrowser: View {
                     .listStyle(UI.DenseListStyle())
                     .frame(height: max(1, height - 9))
                 }
-                if
-                    let error = session.store.blocklists.error
-                {
+                if let error = session.store.blocklists.error {
                     Text(error.formatted(.terminalText))
                         .foregroundStyle(.theme.danger)
                         .lineLimit(1)

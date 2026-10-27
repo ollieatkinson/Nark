@@ -9,21 +9,28 @@
 --maxwidth 120
 --indentcase true
 --semicolons never
+--linebreaks lf
 --allman false
+--guard-else same-line
 --closingparen balanced
 --callsiteparen balanced
 --wraparguments before-first
 --wrapparameters before-first
+--allow-partial-wrapping false
 --wrapcollections before-first
---wrapconditions before-first
+--wrapconditions after-first
 --wrapternary before-operators
+--wrap-string-interpolation false
 --wrap-enum-cases always
 --wrap-single-line-enum-cases true
 # Preserve deliberate type spacing: no leading gap before enum cases.
 --type-blank-lines preserve
 --scope-blank-lines preserve
---wrap-closure-bodies Columns,middle,trailing,Button,ForEach,Group,HStack,List,VStack,onKeyPress,onTapGesture,onSubmit,onEnded,onAppear,onChange
---rules blankLineAfterImports,blankLinesAtEndOfScope,blankLinesAtStartOfScope,blankLinesBetweenChainedFunctions,blankLinesBetweenImports,blankLinesBetweenScopes,braces,consecutiveBlankLines,consecutiveSpaces,elseOnSameLine,emptyBraces,indent,leadingDelimiters,linebreakAtEndOfFile,linebreaks,semicolons,singlePropertyPerLine,sortImports,spaceAroundBraces,spaceAroundBrackets,spaceAroundComments,spaceAroundGenerics,spaceAroundOperators,spaceAroundParens,spaceInsideBraces,spaceInsideBrackets,spaceInsideGenerics,spaceInsideParens,trailingSpace,wrap,wrapArguments,wrapAttributes,wrapCaseBodies,wrapClosureBodies,wrapEnumCases,wrapFunctionBodies,wrapGuardStatementBodies,wrapIfExpressionBodies,wrapIfStatementBodies,wrapLoopBodies,wrapMultilineFunctionChains,wrapMultilineStatementBraces,wrapPropertyBodies
---no-wrap-operators .,->
+--wrap-closure-bodies Columns,middle,trailing,Button,ForEach,Group,HStack,List,VStack,Task,Task.detached,run,withUnsafeBytes,withUnsafeMutableBytes,onKeyPress,onTapGesture,onSubmit,onEnded,onAppear,onChange
+# Keep statement braces beside the final condition; do not enable wrapMultilineStatementBraces.
+--rules blankLineAfterImports,blankLinesAtEndOfScope,blankLinesAtStartOfScope,blankLinesBetweenChainedFunctions,blankLinesBetweenImports,blankLinesBetweenScopes,braces,consecutiveBlankLines,consecutiveSpaces,elseOnSameLine,emptyBraces,indent,leadingDelimiters,linebreakAtEndOfFile,linebreaks,modifiersOnSameLine,semicolons,singlePropertyPerLine,sortImports,spaceAroundBraces,spaceAroundBrackets,spaceAroundComments,spaceAroundGenerics,spaceAroundOperators,spaceAroundParens,spaceInsideBraces,spaceInsideBrackets,spaceInsideGenerics,spaceInsideParens,trailingSpace,wrap,wrapArguments,wrapAttributes,wrapCaseBodies,wrapClosureBodies,wrapDoBodies,wrapEnumCases,wrapFunctionBodies,wrapGuardStatementBodies,wrapIfExpressionBodies,wrapIfStatementBodies,wrapLoopBodies,wrapMultilineFunctionChains,wrapPropertyBodies
+# Wrap at argument/collection boundaries rather than fragmenting paths, ranges or operands.
+# Long boolean expressions can be written with a leading && / || between complete conditions.
+--no-wrap-operators .,->,..<,...,=,+=,-=,*=,/=,==,!=,===,!==,<,>,<=,>=,+,-,*,/,%,&,|,^,<<,>>,&+,&-,&*,&&,||,??
 --wrap-return-type never
 --wrap-effects never

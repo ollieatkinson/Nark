@@ -24,7 +24,9 @@ extension MonitorFeature {
                 guard let action = Self.action(for: event) else {
                     return
                 }
-                _ = await MainActor.run { store?.send(action) }
+                _ = await MainActor.run {
+                    store?.send(action)
+                }
             }
         }
 
@@ -36,32 +38,27 @@ extension MonitorFeature {
         nonisolated public static func action(for event: Event) -> Action? {
             switch event.detail.id {
                 case nark.ux.monitor.home.tree.row.event.select:
-                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self]
-                    else {
+                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self] else {
                         return nil
                     }
-                    return .selectNode(id)
+                    return .selectNode(id, event: event.id)
                 case nark.ux.monitor.home.tree.row.event.activate:
-                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self]
-                    else {
+                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self] else {
                         return nil
                     }
                     return .activateNode(id)
                 case nark.ux.monitor.home.tree.row.disclosure.event.select:
-                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self]
-                    else {
+                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self] else {
                         return nil
                     }
                     return .toggleNode(id)
                 case nark.ux.monitor.home.tree.row.event.expand:
-                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self]
-                    else {
+                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self] else {
                         return nil
                     }
                     return .expandNode(id)
                 case nark.ux.monitor.home.tree.row.event.collapse:
-                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self]
-                    else {
+                    guard let id = try? event[nark.ux.monitor.home.tree.row, as: String.self] else {
                         return nil
                     }
                     return .collapseNode(id)
@@ -80,22 +77,18 @@ extension MonitorFeature {
                     }
                     return .move(delta)
                 case nark.ux.monitor.search.event.change:
-                    guard let query = try? event[nark.ux.monitor.search, as: String.self]
-                    else {
+                    guard let query = try? event[nark.ux.monitor.search, as: String.self] else {
                         return nil
                     }
                     return .search(query)
                 case nark.ux.monitor.search.field.event.select:
-                    guard
-                        let raw = try? event[nark.ux.monitor.search.field, as: String.self],
-                        let field = ConnectionQuery.Field(rawValue: raw)
-                    else {
+                    guard let raw = try? event[nark.ux.monitor.search.field, as: String.self],
+                          let field = ConnectionQuery.Field(rawValue: raw) else {
                         return nil
                     }
                     return .selectSearchField(field)
                 case nark.ux.monitor.search.field.event.move:
-                    guard let delta = try? event[nark.ux.monitor.search.field, as: Int.self]
-                    else {
+                    guard let delta = try? event[nark.ux.monitor.search.field, as: Int.self] else {
                         return nil
                     }
                     return .moveSearchField(delta)
@@ -112,7 +105,7 @@ extension MonitorFeature {
                     ], let id = UUID(uuidString: raw) else {
                         return nil
                     }
-                    return .blocklists(.selectCommunity(id))
+                    return .blocklists(.selectCommunity(id, event: event.id))
                 case nark.ux.monitor.blocklists.community.row.event.activate:
                     guard let raw = try? event[
                         nark.ux.monitor.blocklists.community.row,
@@ -122,18 +115,14 @@ extension MonitorFeature {
                     }
                     return .blocklists(.addCommunity(id))
                 case nark.ux.monitor.blocklists.row.event.select:
-                    guard
-                        let raw = try? event[nark.ux.monitor.blocklists.row, as: String.self],
-                        let id = UUID(uuidString: raw)
-                    else {
+                    guard let raw = try? event[nark.ux.monitor.blocklists.row, as: String.self],
+                          let id = UUID(uuidString: raw) else {
                         return nil
                     }
-                    return .blocklists(.select(id))
+                    return .blocklists(.select(id, event: event.id))
                 case nark.ux.monitor.blocklists.row.event.activate:
-                    guard
-                        let raw = try? event[nark.ux.monitor.blocklists.row, as: String.self],
-                        let id = UUID(uuidString: raw)
-                    else {
+                    guard let raw = try? event[nark.ux.monitor.blocklists.row, as: String.self],
+                          let id = UUID(uuidString: raw) else {
                         return nil
                     }
                     return .blocklists(.open(id))
@@ -146,10 +135,7 @@ extension MonitorFeature {
                 case nark.ux.monitor.blocklists.close.event.select:
                     return .blocklists(.close)
                 case nark.ux.monitor.blocklists.import.event.select:
-                    guard let source = try? event[
-                        nark.ux.monitor.blocklists.import,
-                        as: String.self
-                    ] else {
+                    guard let source = try? event[nark.ux.monitor.blocklists.import, as: String.self] else {
                         return nil
                     }
                     return .blocklists(.importSource(source))
@@ -160,8 +146,7 @@ extension MonitorFeature {
                 case nark.ux.monitor.view.event.select:
                     return .switchView
                 case nark.ux.monitor.applications.row.event.select:
-                    guard let path = try? event[nark.ux.monitor.applications.row, as: String.self]
-                    else {
+                    guard let path = try? event[nark.ux.monitor.applications.row, as: String.self] else {
                         return nil
                     }
                     return .selectApplication(path == "*" ? nil : path)
@@ -170,29 +155,23 @@ extension MonitorFeature {
                 case nark.ux.monitor.detail.close.event.select:
                     return .closeDetail
                 case nark.ux.monitor.connections.row.event.activate:
-                    guard
-                        let raw = try? event[nark.ux.monitor.connections.row, as: String.self],
-                        let id = UUID(uuidString: raw)
-                    else {
+                    guard let raw = try? event[nark.ux.monitor.connections.row, as: String.self],
+                          let id = UUID(uuidString: raw) else {
                         return nil
                     }
                     return .openConnection(id)
                 case nark.ux.monitor.connections.row.event.select:
-                    guard
-                        let raw = try? event[nark.ux.monitor.connections.row, as: String.self],
-                        let id = UUID(uuidString: raw)
-                    else {
+                    guard let raw = try? event[nark.ux.monitor.connections.row, as: String.self],
+                          let id = UUID(uuidString: raw) else {
                         return nil
                     }
-                    return .selectConnection(id)
+                    return .selectConnection(id, event: event.id)
                 case nark.ux.monitor.rules.row.event.select:
-                    guard
-                        let raw = try? event[nark.ux.monitor.rules.row, as: String.self],
-                        let id = UUID(uuidString: raw)
-                    else {
+                    guard let raw = try? event[nark.ux.monitor.rules.row, as: String.self],
+                          let id = UUID(uuidString: raw) else {
                         return nil
                     }
-                    return .selectRule(id)
+                    return .selectRule(id, event: event.id)
                 case nark.ux.monitor.block.destination.event.select:
                     return .blockDestination
                 case nark.ux.monitor.block.application.event.select:
@@ -204,14 +183,12 @@ extension MonitorFeature {
                 case nark.ux.monitor.rules.remove.event.select:
                     return .removeRule
                 case nark.ux.monitor.rules.add.event.select:
-                    guard let domain = try? event[nark.ux.monitor.rules.add, as: String.self]
-                    else {
+                    guard let domain = try? event[nark.ux.monitor.rules.add, as: String.self] else {
                         return nil
                     }
                     return .addDomain(domain)
                 case nark.ux.monitor.rules.import.event.select:
-                    guard let text = try? event[nark.ux.monitor.rules.import, as: String.self]
-                    else {
+                    guard let text = try? event[nark.ux.monitor.rules.import, as: String.self] else {
                         return nil
                     }
                     return .importDomains(text)

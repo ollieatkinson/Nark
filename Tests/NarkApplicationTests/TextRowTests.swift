@@ -11,8 +11,9 @@ import Vocabulary
     @Test func event_key_paths_have_stable_identity_for_the_same_destination() {
         let events = Events()
         let control = UI.Control(nark.ui.type.control)
-        let first = control.projection(.change, using: .init(events: events))
-        let second = control.projection(.change, using: .init(events: events))
+        let action = UI.EventAction(events: events)
+        let first = control.projection(.change, using: action)
+        let second = control.projection(.change, using: action)
         let other = control.projection(.change, using: .init(events: Events()))
         let firstPath: WritableKeyPath<Int, Int> = \.[emitting: first]
         let secondPath: WritableKeyPath<Int, Int> = \.[emitting: second]
@@ -27,8 +28,7 @@ import Vocabulary
         @State var selected: String?
         var transaction = Transaction()
         transaction.disablesAnimations = true
-        let projection = UI.Control(nark.ux.monitor.connections.row)
-            .projection(.select, using: .init(events: events))
+        let projection = UI.Control(nark.ux.monitor.connections.row).projection(.select, using: .init(events: events))
         let binding = $selected.transaction(transaction)[dynamicMember: \.[emitting: projection]]
         #expect(binding.transaction.disablesAnimations)
         binding.wrappedValue = nil
@@ -78,15 +78,19 @@ import Vocabulary
             width: 40
         )
         let frame = DefaultRenderer().render(
-            row.frame(width: 40, height: 1),
+            row
+                .frame(width: 40, height: 1),
             proposal: .init(width: 40, height: 1)
         )
         let cell = try #require(frame.rasterSurface.cells[0].first { $0.character == "p" })
-        let reference = DefaultRenderer().render(Text("p").foregroundStyle(.theme.danger))
+        let reference = DefaultRenderer().render(
+            Text("p")
+                .foregroundStyle(.theme.danger)
+        )
         #expect(cell.style?.foregroundColor == reference.rasterSurface.cells[0][0].style?.foregroundColor)
-        #expect(frame.semanticSnapshot
-            .accessibilityNodes
-            .contains { $0.label?.contains("current policy blocked") == true })
+        #expect(frame.semanticSnapshot.accessibilityNodes.contains {
+            $0.label?.contains("current policy blocked") == true
+        })
     }
 
     @Test func rapid_control_changes_publish_each_new_value_before_model_delivery() async throws {
@@ -110,7 +114,8 @@ import Vocabulary
 
     private func render(_ row: UI.TextRow, width: Int) -> String {
         RenderOnce.render(
-            row.frame(width: width, height: 1),
+            row
+                .frame(width: width, height: 1),
             width: width,
             environment: [
                 "NO_COLOR": "1",
@@ -122,20 +127,24 @@ import Vocabulary
     }
 
     @Test func columns_align_by_terminal_cells_and_clip_wide_names() {
-        let row = UI.TextRow([
-            .init("界界hello", width: 5),
-            .init("12", width: 4, alignment: .trailing)
-        ])
+        let row = UI.TextRow(
+            [
+                .init("界界hello", width: 5),
+                .init("12", width: 4, alignment: .trailing)
+            ]
+        )
         let output = render(row, width: 10)
         #expect(output.contains("界界…   12"))
         #expect(layoutText(for: output, width: nil).size.width == 10)
     }
 
     @Test func clipped_styled_runs_remain_a_prefix_and_strip_terminal_controls() {
-        let row = UI.TextRow([
-            .init(spans: [.init("界", style: .theme.danger), .init("abc", style: .theme.success)], width: 2),
-            .init("safe\u{1b}[2J\n", width: 8),
-        ])
+        let row = UI.TextRow(
+            [
+                .init(spans: [.init("界", style: .theme.danger), .init("abc", style: .theme.success)], width: 2),
+                .init("safe\u{1b}[2J\n", width: 8),
+            ]
+        )
         let output = render(row, width: 11)
         #expect(output.hasPrefix("…  safe[2J"))
         #expect(!output.contains("\u{1b}"))
@@ -156,11 +165,10 @@ import Vocabulary
             policyBlocks: false
         )
         let frame = DefaultRenderer().render(
-            row.frame(width: 80, height: 1),
+            row
+                .frame(width: 80, height: 1),
             proposal: .init(width: 80, height: 1)
         )
-        #expect(frame.semanticSnapshot
-            .accessibilityNodes
-            .contains { $0.label?.contains("Incoming") == true })
+        #expect(frame.semanticSnapshot.accessibilityNodes.contains { $0.label?.contains("Incoming") == true })
     }
 }

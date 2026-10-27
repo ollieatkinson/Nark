@@ -94,14 +94,11 @@ extension Firewall.Recording {
         }
 
         mutating func read(after: UInt64, at now: Date) throws -> Batch {
-            guard after <= sequence
-            else {
+            guard after <= sequence else {
                 throw Firewall.Error.message("Invalid recording cursor.")
             }
             lastReadAt = now
-            let earliest = sequence >= UInt64(Self.capacity)
-                ? sequence - UInt64(Self.capacity) + 1
-                : 1
+            let earliest = sequence >= UInt64(Self.capacity) ? sequence - UInt64(Self.capacity) + 1 : 1
             let first = max(after + 1, earliest)
             let dropped = first - after - 1
             let last = min(sequence, first + UInt64(Self.batchSize) - 1)

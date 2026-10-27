@@ -10,7 +10,10 @@ extension Firewall {
         public var enabled: Bool
         public var applicationScope: Firewall.Application.Scope?
         public init(
-            id: UUID = UUID(), app: String? = nil, domain: String? = nil, enabled: Bool = true,
+            id: UUID = UUID(),
+            app: String? = nil,
+            domain: String? = nil,
+            enabled: Bool = true,
             applicationScope: Firewall.Application.Scope? = nil
         ) throws {
             guard app != nil || domain != nil else {
@@ -24,8 +27,7 @@ extension Firewall {
             }
             self.id = id
             if let applicationScope {
-                guard let app
-                else {
+                guard let app else {
                     throw Firewall.Error.message("An application scope requires a path.")
                 }
                 _ = try Firewall.Application(path: app, scope: applicationScope)
@@ -47,10 +49,7 @@ extension Firewall {
             }
             if let own = self.app {
                 if applicationScope == .bundle {
-                    guard
-                        (try? Firewall.Application(path: own, scope: .bundle).matches(app)) ==
-                        true
-                    else {
+                    guard (try? Firewall.Application(path: own, scope: .bundle).matches(app)) == true else {
                         return false
                     }
                 } else if own != app {

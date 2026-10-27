@@ -75,8 +75,9 @@ enum RecordingCommand {
         }
         let initial = try await client.recording(.start(options.application))
         let journal: RecordingJournal
-        do { journal = try RecordingJournal(directory: options.directory, initial: initial) }
-        catch {
+        do {
+            journal = try RecordingJournal(directory: options.directory, initial: initial)
+        } catch {
             _ = try? await client.recording(.close(initial.id))
             throw error
         }
@@ -89,10 +90,14 @@ enum RecordingCommand {
         var lastCheckpoint = Date()
         do {
             while !stop.stopped && !Task.isCancelled {
-                let batch = try await client.recording(.read(.init(
-                    id: initial.id,
-                    after: journal.cursor
-                )))
+                let batch = try await client.recording(
+                    .read(
+                        .init(
+                            id: initial.id,
+                            after: journal.cursor
+                        )
+                    )
+                )
                 try journal.append(batch)
                 for entry in batch.entries {
                     let c = entry.connection
@@ -100,10 +105,7 @@ enum RecordingCommand {
                         "\(RecordingReport.time(entry.time))  \(c.blocked ? "BLOCK" : "ALLOW")  \(c.destination.formatted(.terminalText)):\(c.port.formatted(.terminalText))  \(c.transport.formatted(.terminalText))  \(c.app.formatted(.terminalText))"
                     )
                 }
-                if
-                    batch.dropped >
-                    0
-                {
+                if batch.dropped > 0 {
                     print(
                         "Recording gap: \(batch.dropped) connections were lost; the report will be marked incomplete."
                     )
@@ -119,37 +121,43 @@ enum RecordingCommand {
                     try await Task.sleep(for: .milliseconds(200))
                 }
             }
-            var batch = try await client.recording(.stop(.init(
-                id: initial.id,
-                after: journal.cursor
-            )))
+            var batch = try await client.recording(
+                .stop(
+                    .init(
+                        id: initial.id,
+                        after: journal.cursor
+                    )
+                )
+            )
             while true {
                 try journal.append(batch)
                 if !batch.hasMore {
                     break
                 }
-                batch = try await client.recording(.read(.init(
-                    id: initial.id,
-                    after: journal.cursor
-                )))
+                batch = try await client.recording(
+                    .read(
+                        .init(
+                            id: initial.id,
+                            after: journal.cursor
+                        )
+                    )
+                )
             }
             try journal.finish()
             _ = try? await client.recording(.close(initial.id))
             print(
                 "\n\(journal.report.observedConnections) connections recorded; \(journal.report.destinations.count) destination endpoints."
             )
-            print(
-                "Report: \(options.directory.appendingPathComponent("report.md").path.formatted(.terminalText))"
-            )
+            print("Report: \(options.directory.appendingPathComponent("report.md").path.formatted(.terminalText))")
             if journal.report.status == .incomplete {
-                throw Firewall.Error
-                    .message("Recording completed with gaps. See report.json for details.")
+                throw Firewall.Error.message("Recording completed with gaps. See report.json for details.")
             }
         } catch {
             _ = try? await client.recording(.close(initial.id))
             try? journal.finish(error: error.localizedDescription)
-            FileHandle.standardError
-                .write(Data("Partial report: \(options.directory.path.formatted(.terminalText))\n".utf8))
+            FileHandle.standardError.write(
+                Data("Partial report: \(options.directory.path.formatted(.terminalText))\n".utf8)
+            )
             throw error
         }
     }

@@ -3,41 +3,16 @@ import Foundation
 
 extension MonitorFeature.State {
 
-    // List filtering must not erase the app/service selected in Home when there
-    // are zero matches. Resolve navigation against the unfiltered app scope.
-    private var navigationRows: [Firewall.Connection] {
-        page == .activity ? scopedRows : matchingRows
-    }
-
     public var activityTree: ActivityTree {
-        ActivityTree(
-            rows: navigationRows,
-            recent: activity.recentFlows,
-            isBlocked: snapshot.blocks
-        )
-    }
-
-    var navigationTree: ActivityTree {
-        ActivityTree(
-            rows: navigationRows,
-            recent: activity.recentFlows,
-            expanded: home.expanded,
-            isBlocked: snapshot.blocks
-        )
+        (page == .activity ? content.list : content.home).tree
     }
 
     func node(_ id: String) -> ActivityTree.Node? {
-        navigationTree.nodes[id] ?? activityTree.nodes[id]
+        activityTree.nodes[id]
     }
 
     public var homePresentation: MonitorFeature.HomePresentation {
-        .init(
-            rows: matchingRows,
-            navigation: home,
-            activity: activity,
-            locations: locations,
-            isBlocked: snapshot.blocks
-        )
+        content.homePresentation(selection: home.selection)
     }
 
     public var focusedTitle: String {
@@ -49,21 +24,17 @@ extension MonitorFeature.State {
     }
 
     public var focusedRows: [Firewall.Connection] {
-        guard
-            home.selection != ActivityTree.all,
-            let selected = focusedNode
-        else {
-            return matchingRows
-        }
-        return matchingRows.filter { selected.connections.contains($0.id) }
+        (page == .activity ? content.list : content.home).focus(home.selection).rows
+    }
+
+    public var connectionPositions: [String: Int]? {
+        selectedApplication == nil ? listFocus.stringPositions : nil
     }
 
     public var commandConnection: Firewall.Connection? {
         if page == .home || page == .map {
-            guard
-                let node = focusedNode,
-                node.kind == .destination || node.kind == .connection
-            else {
+            guard let node = focusedNode,
+                  node.kind == .destination || node.kind == .connection else {
                 return nil
             }
             return focusedRows.first
@@ -72,11 +43,20 @@ extension MonitorFeature.State {
     }
 
     public var mapDestinations: [MonitorFeature.MapDestination] {
-        MonitorFeature.MapDestination.project(
-            rows: matchingRows,
-            selected: Set(focusedRows.map(\.id)),
-            locations: locations,
-            isBlocked: snapshot.blocks
+        let index = page == .activity ? content.list : content.home
+        return index.destinations(for: index.focus(home.selection))
+    }
+
+}
+
+extension MonitorFeature.Content {
+
+    public func homePresentation(selection: String) -> MonitorFeature.HomePresentation {
+        let focus = home.focus(selection)
+        return .init(
+            selected: .init(focus.node),
+            destinations: home.destinations(for: focus),
+            peerCount: focus.peerCount
         )
     }
 }
@@ -86,39 +66,9 @@ extension MonitorFeature {
     /// Derive one coherent home frame. Tree, map and summary share the same index.
     public struct HomePresentation: Equatable, Sendable {
 
-        public let tree: ActivityTree
-        public let selected: ActivityTree.Node
-        public let focusedRows: [Firewall.Connection]
+        public let selected: ActivityTree.Row.Summary
         public let destinations: [MapDestination]
-        init(
-            rows: [Firewall.Connection],
-            navigation: ActivityTree.Navigation,
-            activity: Activity,
-            locations: [String: String],
-            isBlocked: (Firewall.Connection) -> Bool
-        ) {
-            var index = ActivityTree(
-                rows: rows,
-                recent: activity.recentFlows,
-                expanded: navigation.expanded,
-                isBlocked: isBlocked
-            )
-            if index.nodes[navigation.selection] == nil {
-                index = ActivityTree(rows: rows, recent: activity.recentFlows, isBlocked: isBlocked)
-            }
-            let node = index.nodes[navigation.selection] ?? index.nodes[ActivityTree.all]!
-            tree = index
-            selected = node
-            focusedRows = navigation.selection == ActivityTree.all
-                ? rows
-                : rows.filter { node.connections.contains($0.id) }
-            destinations = MapDestination.project(
-                rows: rows,
-                selected: node.connections,
-                locations: locations,
-                isBlocked: isBlocked
-            )
-        }
+        public let peerCount: Int
     }
 
     public struct MapDestination: Equatable, Identifiable, Sendable {

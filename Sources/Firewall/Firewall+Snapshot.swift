@@ -13,8 +13,12 @@ extension Firewall {
         public var blocklists: [Firewall.Blocklist.Summary]?
         public var blocklistMatches: [String: UUID]?
         public init(
-            rows: [Firewall.Connection] = [], rules: [Firewall.Rule] = [], startedAt: Date = Date(),
-            totalAllowed: Int = 0, totalBlocked: Int = 0, traffic: Firewall.Traffic? = nil
+            rows: [Firewall.Connection] = [],
+            rules: [Firewall.Rule] = [],
+            startedAt: Date = Date(),
+            totalAllowed: Int = 0,
+            totalBlocked: Int = 0,
+            traffic: Firewall.Traffic? = nil
         ) {
             self.rows = rows
             self.rules = rules
@@ -35,11 +39,13 @@ extension Firewall.Snapshot {
             return false
         }
         return blocklistMatches?[connection.id.uuidString] != nil
-            || rules.contains { $0.matches(
-                app: connection.app,
-                host: connection.host,
-                address: connection.address,
-                direction: connection.direction
-            ) }
+            || rules.contains {
+                $0.matches(
+                    app: connection.app,
+                    host: connection.host,
+                    address: connection.address,
+                    direction: connection.direction
+                )
+            }
     }
 }

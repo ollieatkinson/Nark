@@ -6,7 +6,7 @@ import Vocabulary
 extension UI {
 
     /// A reusable disclosure row; the owning experience supplies hierarchy and state.
-    public struct TreeRow<Concept: L & I_nark_ui_component_tree_row>: View {
+    public struct TreeRow<Concept: L & I_nark_ui_component_tree_row>: TextRowContent, Equatable {
 
         @Environment(\.eventAction) private var send
         public let concept: K<Concept>
@@ -49,7 +49,15 @@ extension UI {
             self.width = width
         }
 
-        public var body: some View {
+        nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.concept == rhs.concept && lhs.title == rhs.title && lhs.depth == rhs.depth
+                && lhs.hasChildren == rhs.hasChildren && lhs.expanded == rhs.expanded
+                && lhs.count == rhs.count && lhs.blocked == rhs.blocked && lhs.mixed == rhs.mixed
+                && lhs.activity == rhs.activity && lhs.activityMaximum == rhs.activityMaximum
+                && lhs.directions == rhs.directions && lhs.width == rhs.width
+        }
+
+        public var textRow: TextRow {
             let indent = min(depth, 8) * 2
             let nameWidth = max(0, width - 7 - (activity == nil ? 0 : 7))
             let disclosure = hasChildren ? (expanded ? "▾ " : "▸ ") : "  "
@@ -58,35 +66,54 @@ extension UI {
             let status = blocked ? "× " : mixed ? "◐ " : ""
             let marker = directions.isEmpty ? "" : UI.directionSymbol(directions) + " "
             let label = (hasChildren ? (expanded ? "Expanded, " : "Collapsed, ") : "")
-                + directions.map(\.name).sorted().joined(separator: " and ") + ", " +
-                title.formatted(.terminalText) + ", \(count) flows, current policy " + (blocked
+                + directions.map(\.name).sorted().joined(separator: " and ") + ", "
+                + title.formatted(.terminalText) + ", \(count) flows, current policy " + (blocked
                     ? "blocked"
                     : mixed ? "mixed" : "allowed")
-            TextRow([
-                .init(
-                    spans: [.init(prefix, style: policyStyle), .init(
-                        marker,
-                        style: policyStyle ?? UI.directionStyle(directions)
-                    ), .init(status + title, style: policyStyle)],
-                    width: nameWidth
-                ),
-            ] + (activity.map { [.init(
-                spans: UI.activitySpans(value: $0, maximum: activityMaximum),
-                width: 6
-            )] } ?? []) + [
-                .init("\(count)", width: 6, alignment: .trailing, style: policyStyle ?? .theme.muted)
-            ], accessibilityLabel: label)
-                .gesture(SpatialTapGesture()
-                    .onEnded { value in
-                        if
-                            hasChildren,
-                            (Double(indent) ..< Double(indent + 2)).contains(value.location.x)
-                        {
-                            send(Event(concept.disclosure.event.select))
-                        } else {
-                            send(Event(concept.event.select))
+            return TextRow(
+                [
+                    .init(
+                        spans: [
+                            .init(prefix, style: policyStyle),
+                            .init(
+                                marker,
+                                style: policyStyle ?? UI.directionStyle(directions)
+                            ),
+                            .init(status + title, style: policyStyle)
+                        ],
+                        width: nameWidth
+                    ),
+                ] + (activity.map {
+                    [
+                        .init(
+                            spans: UI.activitySpans(value: $0, maximum: activityMaximum),
+                            width: 6
+                        )
+                    ]
+                } ?? []) + [
+                    .init("\(count)", width: 6, alignment: .trailing, style: policyStyle ?? .theme.muted)
+                ],
+                accessibilityLabel: label
+            )
+        }
+
+        public var rowActions: [TextRowAction] {
+            guard hasChildren else {
+                return []
+            }
+            let column = min(depth, 8) * 2
+            return [.init(columns: column ..< column + 2, concept: concept.disclosure.event.select)]
+        }
+
+        public var body: some View {
+            textRow
+                .gesture(
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            let action = rowActions.first { $0.columns.contains(Int(value.location.x)) }
+                            send(action?.event ?? Event(concept.event.select))
                         }
-                    })
+                )
         }
     }
 }

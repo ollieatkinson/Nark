@@ -61,28 +61,32 @@ extension UI {
             let endpointWidth = showsEndpoint ? max(20, min(34, width / 4)) : 0
             let nameWidth = max(1, width - appWidth - endpointWidth - 20 - (showsEndpoint ? 6 : 5))
             let muted: ThemeShapeStyle? = header ? .theme.muted : nil
-            return TextRow([
-                .init(app, width: appWidth, style: muted), .init(
-                    destination,
-                    width: nameWidth,
-                    style: muted
-                ),
-            ] + (showsEndpoint ? [.init(endpoint, width: endpointWidth, style: muted)] : []) + [
-                .init(transport, width: 4, style: muted), .init(
-                    direction,
-                    width: 3,
-                    style: directionStyle ?? .theme.muted
-                ),
-                .init(count, width: 7, alignment: .trailing, style: muted),
-                .init(
-                    policy,
-                    width: 6,
-                    alignment: .trailing,
-                    style: header
-                        ? .theme.muted
-                        : policy == "BLOCK" ? .theme.danger : .theme.success
-                ),
-            ], leadingPadding: header ? 2 : 0, accessibilityLabel: label)
+            return TextRow(
+                [
+                    .init(app, width: appWidth, style: muted),
+                    .init(
+                        destination,
+                        width: nameWidth,
+                        style: muted
+                    ),
+                ] + (showsEndpoint ? [.init(endpoint, width: endpointWidth, style: muted)] : []) + [
+                    .init(transport, width: 4, style: muted),
+                    .init(
+                        direction,
+                        width: 3,
+                        style: directionStyle ?? .theme.muted
+                    ),
+                    .init(count, width: 7, alignment: .trailing, style: muted),
+                    .init(
+                        policy,
+                        width: 6,
+                        alignment: .trailing,
+                        style: header ? .theme.muted : policy == "BLOCK" ? .theme.danger : .theme.success
+                    ),
+                ],
+                leadingPadding: header ? 2 : 0,
+                accessibilityLabel: label
+            )
         }
     }
 }

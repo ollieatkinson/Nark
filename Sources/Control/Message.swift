@@ -15,10 +15,7 @@ public struct Message: Codable, Sendable {
             case .blocklist(let request):
                 switch request {
                     case .replace(let input):
-                        event = Event(try nark.policy
-                            .blocklist
-                            .replace
-                            .encoding(input))
+                        event = Event(try nark.policy.blocklist.replace.encoding(input))
                     case .toggle(let id):
                         event = Event(nark.policy.blocklist.toggle[id.uuidString])
                     case .remove(let id):
@@ -29,20 +26,11 @@ public struct Message: Codable, Sendable {
             case .recording(let request):
                 switch request {
                     case .start(let application):
-                        event = Event(try nark.activity
-                            .recording
-                            .start
-                            .encoding(application))
+                        event = Event(try nark.activity.recording.start.encoding(application))
                     case .read(let cursor):
-                        event = Event(try nark.activity
-                            .recording
-                            .read
-                            .encoding(cursor))
+                        event = Event(try nark.activity.recording.read.encoding(cursor))
                     case .stop(let cursor):
-                        event = Event(try nark.activity
-                            .recording
-                            .stop
-                            .encoding(cursor))
+                        event = Event(try nark.activity.recording.stop.encoding(cursor))
                     case .close(let id):
                         event = Event(nark.activity.recording.close[id.uuidString])
                 }

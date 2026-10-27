@@ -18,9 +18,7 @@ final class ExtensionControl: NSObject, OSSystemExtensionRequestDelegate {
 
     static func run(_ command: Action) async throws {
         guard Bundle.main.bundleIdentifier == ExtensionConfiguration.appID else {
-            throw Firewall.Error.message(
-                "Activation requires the signed app bundle in /Applications."
-            )
+            throw Firewall.Error.message("Activation requires the signed app bundle in /Applications.")
         }
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.accessory)
@@ -45,36 +43,29 @@ final class ExtensionControl: NSObject, OSSystemExtensionRequestDelegate {
             if command == .deactivate {
                 try await controller.submit(activate: false)
             }
-            print(
-                command == .disable
-                    ? "Nark filtering disabled."
-                    : "Nark extension deactivated."
-            )
+            print(command == .disable ? "Nark filtering disabled." : "Nark extension deactivated.")
         }
     }
 
     private func submit(activate: Bool) async throws {
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
-            let request =
-                activate
-                    ? OSSystemExtensionRequest.activationRequest(
-                        forExtensionWithIdentifier: ExtensionConfiguration.extensionID,
-                        queue: .main
-                    )
-                    : OSSystemExtensionRequest.deactivationRequest(
-                        forExtensionWithIdentifier: ExtensionConfiguration.extensionID,
-                        queue: .main
-                    )
+            let request = activate
+                ? OSSystemExtensionRequest.activationRequest(
+                    forExtensionWithIdentifier: ExtensionConfiguration.extensionID,
+                    queue: .main
+                )
+                : OSSystemExtensionRequest.deactivationRequest(
+                    forExtensionWithIdentifier: ExtensionConfiguration.extensionID,
+                    queue: .main
+                )
             request.delegate = self
             OSSystemExtensionManager.shared.submitRequest(request)
         }
     }
 
     nonisolated func requestNeedsUserApproval(_ request: OSSystemExtensionRequest) {
-        print(
-            "Approve Nark in System Settings → General → Login Items & Extensions → Network Extensions."
-        )
+        print("Approve Nark in System Settings → General → Login Items & Extensions → Network Extensions.")
     }
 
     nonisolated func request(
@@ -98,9 +89,7 @@ final class ExtensionControl: NSObject, OSSystemExtensionRequestDelegate {
     ) {
         Task { @MainActor in
             if result == .willCompleteAfterReboot {
-                continuation?.resume(
-                    throwing: Firewall.Error.message("Restart macOS, then run activate again.")
-                )
+                continuation?.resume(throwing: Firewall.Error.message("Restart macOS, then run activate again."))
             } else {
                 continuation?.resume()
             }

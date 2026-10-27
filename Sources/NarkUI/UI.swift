@@ -47,31 +47,48 @@ extension UI {
 extension UI {
 
     /// A UI adapter to SwiftLexicon's bus, with one delivery/error policy for all controls.
-    public struct EventAction: Sendable {
+    public struct EventAction: Sendable, Hashable {
 
-        private let events: Events?
-        private let failure: @MainActor @Sendable (Error) -> Void
-        public var isEnabled: Bool {
-            events != nil
+        private final class Storage: Sendable {
+
+            let events: Events?
+            let failure: @MainActor @Sendable (Error) -> Void
+
+            init(events: Events?, failure: @escaping @MainActor @Sendable (Error) -> Void) {
+                self.events = events
+                self.failure = failure
+            }
         }
 
-        var sourceIdentity: ObjectIdentifier? {
-            events.map(ObjectIdentifier.init)
+        private let storage: Storage
+        public var isEnabled: Bool {
+            storage.events != nil
         }
 
         public init(
             events: Events? = nil,
             onFailure: @escaping @MainActor @Sendable (Error) -> Void = { _ in }
         ) {
-            self.events = events
-            failure = onFailure
+            storage = Storage(events: events, failure: onFailure)
+        }
+
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.storage === rhs.storage
+        }
+
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(ObjectIdentifier(storage))
         }
 
         @MainActor public func callAsFunction(_ event: Event) {
-            guard let events else {
+            guard let events = storage.events else {
                 return
             }
-            do { try events.send(event) } catch { failure(error) }
+            do {
+                try events.send(event)
+            } catch {
+                storage.failure(error)
+            }
         }
     }
 }

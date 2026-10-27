@@ -20,10 +20,9 @@ extension Firewall.Hostname.Inspection {
         /// Feed complete UDP datagrams. CRYPTO offsets permit reordering,
         /// retransmission and a ClientHello split across multiple Initial packets.
         public mutating func inspect(_ datagram: Data) -> Result {
-            guard
-                !datagram.isEmpty, datagram.count <= 65_535,
-                wireBytes <= 65_536 - datagram.count
-            else {
+            guard !datagram.isEmpty,
+                  datagram.count <= 65_535,
+                  wireBytes <= 65_536 - datagram.count else {
                 return .unavailable
             }
             wireBytes += datagram.count
@@ -78,30 +77,28 @@ extension Firewall.Hostname.Inspection {
                     }
                     let number = packetNumber(truncated, count: pnSize)
                     var nonce = keys.iv
-                    for i in 0 ..<
-                        8
-                    {
+                    for i in 0 ..< 8 {
                         nonce[11 - i] ^= UInt8(truncatingIfNeeded: number >> (i * 8))
                     }
                     let box = try AES.GCM.SealedBox(
                         nonce: AES.GCM.Nonce(data: nonce),
-                        ciphertext: protected[pnSize ..<
-                            (protected.count - 16)],
+                        ciphertext: protected[pnSize ..< (protected.count - 16)],
                         tag: protected.suffix(16)
                     )
                     let payload = try AES.GCM.open(box, using: keys.key, authenticating: header)
                     largest = max(largest ?? 0, number)
                     try frames(Array(payload))
                     if contiguous >= 4 {
-                        let result = Firewall.Hostname.Inspection
-                            .clientHello(Array(bytes.prefix(contiguous)))
+                        let result = Firewall.Hostname.Inspection.clientHello(Array(bytes.prefix(contiguous)))
                         if result != .needMore {
                             return result
                         }
                     }
                 }
                 return keys == nil ? .unavailable : .needMore
-            } catch { return .unavailable }
+            } catch {
+                return .unavailable
+            }
         }
 
         private mutating func frames(_ payload: [UInt8]) throws {
@@ -131,10 +128,8 @@ extension Firewall.Hostname.Inspection {
                     case 6: // CRYPTO
                         let offset = try c.variable()
                         let length = try c.variable()
-                        guard
-                            offset <= limit,
-                            length <= limit - offset
-                        else {
+                        guard offset <= limit,
+                              length <= limit - offset else {
                             throw Invalid.packet
                         }
                         let fragment = try c.take(length)
@@ -144,8 +139,7 @@ extension Firewall.Hostname.Inspection {
                         }
                         for (index, byte) in fragment.enumerated() {
                             let position = offset + index
-                            guard !present[position] || bytes[position] == byte
-                            else {
+                            guard !present[position] || bytes[position] == byte else {
                                 throw Invalid.packet
                             }
                             bytes[position] = byte
@@ -256,9 +250,13 @@ private struct Keys: Sendable {
         let client = Self.expand(initial, label: "client in", count: 32)
         key = Self.expand(client, label: format.label + " key", count: 16)
         iv = Self.expand(client, label: format.label + " iv", count: 12)
-            .withUnsafeBytes { Array($0) }
+            .withUnsafeBytes {
+                Array($0)
+            }
         hp = Self.expand(client, label: format.label + " hp", count: 16)
-            .withUnsafeBytes { Array($0) }
+            .withUnsafeBytes {
+                Array($0)
+            }
     }
 
     private static func expand<S: ContiguousBytes>(

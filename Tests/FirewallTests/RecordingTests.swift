@@ -18,20 +18,19 @@ import Testing
     @Test func application_scope_has_bundle_boundaries_and_exact_executable_matching() throws {
         let app = try Firewall.Application(path: "/Applications/Example.app", scope: .bundle)
         #expect(app.matches("/Applications/Example.app/Contents/MacOS/Example"))
-        #expect(app
-            .matches(
-                "/Applications/Example.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper"
-            ))
+        #expect(app.matches("/Applications/Example.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper"))
         #expect(!app.matches("/Applications/Example.app.other/Contents/MacOS/Example"))
         let exe = try Firewall.Application(path: "/usr/bin/curl", scope: .executable)
         #expect(exe.matches("/usr/bin/curl"))
         #expect(!exe.matches("/usr/bin/curl-helper"))
         #expect(throws: (any Error).self) { try Firewall.Application(path: "/", scope: .executable)
         }
-        #expect(throws: (any Error).self) { try Firewall.Application(
-            path: "relative",
-            scope: .bundle
-        ) }
+        #expect(throws: (any Error).self) {
+            try Firewall.Application(
+                path: "relative",
+                scope: .bundle
+            )
+        }
     }
 
     @Test func scope_matches_foundation_and_security_spellings_of_private_paths() throws {
@@ -63,10 +62,16 @@ import Testing
         #expect(try runtime.recording(.read(.init(id: start.id, after: 2))).lastSequence == 2)
         #expect(runtime.snapshot().totalAllowed == 5)
         _ = try runtime.recording(.close(start.id))
-        #expect(throws: (any Error).self) { try runtime.recording(.read(.init(
-            id: start.id,
-            after: 2
-        ))) }
+        #expect(throws: (any Error).self) {
+            try runtime.recording(
+                .read(
+                    .init(
+                        id: start.id,
+                        after: 2
+                    )
+                )
+            )
+        }
     }
 
     @Test func overflow_reports_exact_gaps_and_drains_ordered_pages() throws {
@@ -92,10 +97,16 @@ import Testing
         }
         #expect(lost == 17)
         #expect(sequences == Array(UInt64(18) ... UInt64(total)))
-        #expect(throws: (any Error).self) { try runtime.recording(.read(.init(
-            id: start.id,
-            after: .max
-        ))) }
+        #expect(throws: (any Error).self) {
+            try runtime.recording(
+                .read(
+                    .init(
+                        id: start.id,
+                        after: .max
+                    )
+                )
+            )
+        }
     }
 
     @Test func independent_recordings_survive_global_history_clear_and_have_bounded_leases() throws {
@@ -107,12 +118,8 @@ import Testing
         runtime.record(connection(a.path))
         runtime.record(connection(b.path))
         #expect(runtime.handle(.clearHistory).error == nil)
-        #expect(try runtime.recording(.read(.init(id: sa.id, after: 0)))
-            .entries
-            .map(\.connection.app) == [a.path])
-        #expect(try runtime.recording(.read(.init(id: sb.id, after: 0)))
-            .entries
-            .map(\.connection.app) == [b.path])
+        #expect(try runtime.recording(.read(.init(id: sa.id, after: 0))).entries.map(\.connection.app) == [a.path])
+        #expect(try runtime.recording(.read(.init(id: sb.id, after: 0))).entries.map(\.connection.app) == [b.path])
         for _ in 0 ..< 6 {
             _ = try runtime.recording(.start(a))
         }

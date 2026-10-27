@@ -35,7 +35,7 @@ struct MonitorDashboard: View {
             }
         }
         .foregroundStyle(.theme.foreground)
-        .background(.theme.background)
+        .modifier(UI.TerminalBackground())
     }
 }
 
@@ -48,16 +48,25 @@ private struct MonitorLayout: View {
     @Environment(\.requestTermination) private var requestTermination
     @State private var prompt: Prompt?
     @State private var text = ""
+    @State private var eventAction: UI.EventAction
     private typealias Prompt = MonitorCommands.Prompt
+
+    init(session: MonitorFeature.Session, width: Int, height: Int) {
+        self.session = session
+        self.width = width
+        self.height = height
+        _eventAction = State(initialValue: UI.EventAction(events: session.events) { [weak session] error in
+            session?.store.send(.failed(error.localizedDescription))
+        })
+    }
+
     private var commands: MonitorCommands {
         MonitorCommands(session: session)
     }
 
     var body: some View {
         layout(width: width, height: height)
-            .events(session.events) { error in
-                session.store.send(.failed(error.localizedDescription))
-            }
+            .environment(\.eventAction, eventAction)
     }
 
     private func layout(width: Int, height: Int) -> some View {
@@ -93,28 +102,17 @@ private struct MonitorLayout: View {
                         .frame(height: height - 12)
                 }
             } else if session.store.page == .home || session.store.page == .map {
-                let home = session.store.homePresentation
-                let trafficHeight = max(7, activityHeight)
-                let paths: Set<String>? = home.selected.kind == .all && session.store.application == nil
-                    ? nil
-                    : Set(home.focusedRows.map(\.app))
-                let scope = home.selected.kind == .all
-                    ? nil
-                    : home.selected
-                        .scope
-                        .map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? home.selected.title
-                activityPanel(samples: session.store.activity.samples(for: paths), scope: scope)
-                    .frame(height: trafficHeight)
                 MonitorHome(
                     session: session,
-                    presentation: home,
                     width: width - 2,
-                    height: height - 4 - trafficHeight
+                    height: height - 4,
+                    trafficHeight: max(7, activityHeight)
                 )
                 .disabled(prompt != nil)
             } else {
                 if session.store.graphVisible {
-                    activityPanel(
+                    MonitorTraffic(
+                        session: session,
                         samples: session.store.trafficSamples,
                         scope: session.store.trafficScope
                     )
@@ -127,7 +125,7 @@ private struct MonitorLayout: View {
                     .disabled(prompt != nil)
                     .frame(height: listHeight)
                 if detailsHeight > 0 {
-                    details
+                    MonitorSelectionDetails(session: session)
                         .frame(height: detailsHeight)
                 }
             }
@@ -157,34 +155,8 @@ private struct MonitorLayout: View {
                 selected: session.store.page == .activity && session.store.detail == nil
             )
             UI.Tab(nark.ux.monitor.view.rules, title: "rules", selected: session.store.rulesVisible)
-
         }
         .frame(height: 2)
-    }
-
-    private func activityPanel(
-        samples: [MonitorFeature.Activity.Sample],
-        scope: String?
-    ) -> some View {
-        DashboardPanel(
-            title: "traffic · " + (scope.map { $0.formatted(.terminalText) } ?? "observed socket flows"),
-            accent: .theme.tint
-        ) {
-            UI.TrafficChart(
-                nark.ux.monitor.activity,
-                sent: samples.map(\.sent),
-                received: samples.map(\.received)
-            )
-            HStack {
-                Text(
-                    "\(session.store.snapshot.totalAllowed) allowed · \(session.store.snapshot.totalBlocked) blocked"
-                )
-                Spacer()
-                Text(session.store.trafficTrackingSummary)
-            }
-            .foregroundStyle(.theme.muted)
-            .lineLimit(1)
-        }
     }
 
     private func manualRules(height: Int) -> some View {
@@ -204,11 +176,13 @@ private struct MonitorLayout: View {
                 session.store.rules,
                 row: nark.ux.monitor.rules.row,
                 id: \.id.uuidString,
-                selection: selectedRuleID
+                selection: selectedRuleID,
+                height: max(1, height - 4 - (session.store.rules.isEmpty ? 1 : 0)),
+                selectionEvent: session.store.selectionEvent,
+                positions: session.store.content.rulePositions
             ) { concept, rule in
                 UI.Rule(concept, rule: rule)
             }
-            .frame(height: max(1, height - 4 - (session.store.rules.isEmpty ? 1 : 0)))
             .onKeyPress {
                 commands.ruleKey($0)
             }
@@ -219,28 +193,6 @@ private struct MonitorLayout: View {
         Text(message)
             .foregroundStyle(.theme.muted)
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var details: some View {
-        DashboardPanel(
-            title: session.store.rulesVisible ? "rule scope" : "selection · enter for details",
-            accent: .theme.separator
-        ) {
-            if let row = session.store.selectedConnection {
-                Text(row.app.formatted(.terminalText))
-                    .lineLimit(1)
-                let address = row.address.formatted(.terminalText)
-                let endpoint = address.contains(":") ? "[\(address)]" : address
-                Text(
-                    "\(UI.directionSymbol([row.direction])) \(endpoint):\(row.port.formatted(.terminalText)) · \(row.transport.formatted(.terminalText)) · last observed \(row.blocked ? "blocked" : "allowed")"
-                )
-                .foregroundStyle(.theme.muted)
-                .lineLimit(1)
-            } else {
-                Text("Select an application or destination.")
-                    .foregroundStyle(.theme.muted)
-            }
-        }
     }
 
     private var footer: some View {
@@ -306,16 +258,14 @@ private struct MonitorLayout: View {
         guard key.modifiers.isEmpty else {
             return .ignored
         }
-        if
-            session.store.rulesVisible, session.store.blocklists.communityVisible,
-            case .handled = commands.communityKey(key)
-        {
+        if session.store.rulesVisible,
+           session.store.blocklists.communityVisible,
+           case .handled = commands.communityKey(key) {
             return .handled
         }
-        if
-            session.store.rulesVisible, session.store.blocklists.detail != nil,
-            case .handled = commands.blocklistKey(key)
-        {
+        if session.store.rulesVisible,
+           session.store.blocklists.detail != nil,
+           case .handled = commands.blocklistKey(key) {
             return .handled
         }
         switch key.key {
@@ -368,5 +318,61 @@ struct DashboardPanel<Accent: ShapeStyle, Content: View>: View {
         .padding(.horizontal, 1)
         .padding(.vertical, 1)
         .border(accent, style: .rounded, placement: .inset)
+    }
+}
+
+struct MonitorTraffic: View {
+
+    let session: MonitorFeature.Session
+    let samples: [MonitorFeature.Activity.Sample]
+    let scope: String?
+
+    var body: some View {
+        DashboardPanel(
+            title: "traffic · " + (scope.map { $0.formatted(.terminalText) } ?? "observed socket flows"),
+            accent: .theme.tint
+        ) {
+            UI.TrafficChart(
+                nark.ux.monitor.activity,
+                sent: samples.map(\.sent),
+                received: samples.map(\.received)
+            )
+            HStack {
+                Text(
+                    "\(session.store.snapshot.totalAllowed) allowed · \(session.store.snapshot.totalBlocked) blocked"
+                )
+                Spacer()
+                Text(session.store.trafficTrackingSummary)
+            }
+            .foregroundStyle(.theme.muted)
+            .lineLimit(1)
+        }
+    }
+}
+
+private struct MonitorSelectionDetails: View {
+
+    let session: MonitorFeature.Session
+
+    var body: some View {
+        DashboardPanel(
+            title: session.store.rulesVisible ? "rule scope" : "selection · enter for details",
+            accent: .theme.separator
+        ) {
+            if let row = session.store.selectedConnection {
+                Text(row.app.formatted(.terminalText))
+                    .lineLimit(1)
+                let address = row.address.formatted(.terminalText)
+                let endpoint = address.contains(":") ? "[\(address)]" : address
+                Text(
+                    "\(UI.directionSymbol([row.direction])) \(endpoint):\(row.port.formatted(.terminalText)) · \(row.transport.formatted(.terminalText)) · last observed \(row.blocked ? "blocked" : "allowed")"
+                )
+                .foregroundStyle(.theme.muted)
+                .lineLimit(1)
+            } else {
+                Text("Select an application or destination.")
+                    .foregroundStyle(.theme.muted)
+            }
+        }
     }
 }

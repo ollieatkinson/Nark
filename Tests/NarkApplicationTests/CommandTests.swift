@@ -57,24 +57,34 @@ import TestSupport
     @Test func rule_commands_preserve_scope_and_target_the_requested_rule() async throws {
         let runtime = try Firewall.Runtime()
         let client = Firewall.Client(runtime: runtime)
-        let block = try #require(NarkCommand.parseAsRoot([
-            "block", "Example.COM", "--app=/usr/bin/true",
-        ]) as? NarkCommand.Block)
+        let block = try #require(NarkCommand.parseAsRoot(
+            [
+                "block",
+                "Example.COM",
+                "--app=/usr/bin/true",
+            ]
+        ) as? NarkCommand.Block)
         try await block.run(client: client)
         let rule = try #require(runtime.snapshot().rules.first)
         #expect(rule.app == "/usr/bin/true")
         #expect(rule.domain == "example.com")
         #expect(rule.enabled)
 
-        let toggle = try #require(NarkCommand.parseAsRoot([
-            "toggle", rule.id.uuidString,
-        ]) as? NarkCommand.Toggle)
+        let toggle = try #require(NarkCommand.parseAsRoot(
+            [
+                "toggle",
+                rule.id.uuidString,
+            ]
+        ) as? NarkCommand.Toggle)
         try await toggle.run(client: client)
         #expect(runtime.snapshot().rules.first?.enabled == false)
 
-        let remove = try #require(NarkCommand.parseAsRoot([
-            "remove", rule.id.uuidString,
-        ]) as? NarkCommand.Remove)
+        let remove = try #require(NarkCommand.parseAsRoot(
+            [
+                "remove",
+                rule.id.uuidString,
+            ]
+        ) as? NarkCommand.Remove)
         try await remove.run(client: client)
         #expect(runtime.snapshot().rules.isEmpty)
     }
@@ -82,23 +92,35 @@ import TestSupport
     @Test func blocklist_commands_toggle_and_remove_the_requested_list() async throws {
         let runtime = try Firewall.Runtime()
         let client = Firewall.Client(runtime: runtime)
-        _ = try await client.request(.blocklist(.replace(.init(
-            name: "Test list",
-            source: "https://example.com/hosts",
-            text: "blocked.example"
-        ))))
+        _ = try await client.request(
+            .blocklist(
+                .replace(
+                    .init(
+                        name: "Test list",
+                        source: "https://example.com/hosts",
+                        text: "blocked.example"
+                    )
+                )
+            )
+        )
         let list = try #require(runtime.snapshot().blocklists?.first(where: { $0.name == "Test list" }))
         #expect(!list.enabled)
 
-        let toggle = try #require(NarkCommand.parseAsRoot([
-            "toggle-blocklist", list.id.uuidString,
-        ]) as? NarkCommand.ToggleBlocklist)
+        let toggle = try #require(NarkCommand.parseAsRoot(
+            [
+                "toggle-blocklist",
+                list.id.uuidString,
+            ]
+        ) as? NarkCommand.ToggleBlocklist)
         try await toggle.run(client: client)
         #expect(runtime.snapshot().blocklists?.first(where: { $0.id == list.id })?.enabled == true)
 
-        let remove = try #require(NarkCommand.parseAsRoot([
-            "remove-blocklist", list.id.uuidString,
-        ]) as? NarkCommand.RemoveBlocklist)
+        let remove = try #require(NarkCommand.parseAsRoot(
+            [
+                "remove-blocklist",
+                list.id.uuidString,
+            ]
+        ) as? NarkCommand.RemoveBlocklist)
         try await remove.run(client: client)
         #expect(runtime.snapshot().blocklists?.contains(where: { $0.id == list.id }) == false)
     }

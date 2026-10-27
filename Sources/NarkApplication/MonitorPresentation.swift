@@ -62,8 +62,7 @@ extension MonitorFeature.State {
         guard rulesVisible else {
             return false
         }
-        let emptyCommunity = blocklists.communityVisible
-            && (blocklists.community.isEmpty || blocklists.busy)
+        let emptyCommunity = blocklists.communityVisible && (blocklists.community.isEmpty || blocklists.busy)
         let emptyDomains = blocklists.detail?.domains.isEmpty == true
         let emptyCatalog = rules.isEmpty && blocklists.catalog.isEmpty
         return emptyCommunity || emptyDomains || emptyCatalog

@@ -22,11 +22,26 @@ struct NarkCommand: AsyncParsableCommand {
         """,
         version: version,
         subcommands: [
-            Watch.self, Record.self, Status.self, Snapshot.self,
-            Rules.self, Block.self, BlockApp.self, Remove.self, Toggle.self, Import.self,
-            Blocklists.self, ImportBlocklist.self, ShowBlocklist.self,
-            ToggleBlocklist.self, UpdateBlocklist.self, RemoveBlocklist.self,
-            ClearHistory.self, Activate.self, Disable.self, Deactivate.self,
+            Watch.self,
+            Record.self,
+            Status.self,
+            Snapshot.self,
+            Rules.self,
+            Block.self,
+            BlockApp.self,
+            Remove.self,
+            Toggle.self,
+            Import.self,
+            Blocklists.self,
+            ImportBlocklist.self,
+            ShowBlocklist.self,
+            ToggleBlocklist.self,
+            UpdateBlocklist.self,
+            RemoveBlocklist.self,
+            ClearHistory.self,
+            Activate.self,
+            Disable.self,
+            Deactivate.self,
         ],
         defaultSubcommand: Watch.self
     )
@@ -38,10 +53,8 @@ struct NarkCommand: AsyncParsableCommand {
     }
 
     static func client() throws -> Firewall.Client {
-        guard
-            let service = ExtensionConfiguration.serviceName(),
-            let team = Bundle.main.object(forInfoDictionaryKey: "NarkTeamID") as? String
-        else {
+        guard let service = ExtensionConfiguration.serviceName(),
+              let team = Bundle.main.object(forInfoDictionaryKey: "NarkTeamID") as? String else {
             throw Firewall.Error.message(
                 "Run the signed Nark.app executable in /Applications to connect to the filter."
             )

@@ -15,12 +15,17 @@ extension UI {
         @Environment(\.eventAction) private var send
         @Environment(\.isEnabled) private var isEnabled
         @FocusState private var focused: Bool
-        @State private var currentSelection: Value?
+        @State private var cursor: Selection<Value>
+
         private let row: Control<Row>
         private let data: Data
         private let id: KeyPath<Data.Element, Value>
         private let selection: Value?
+        private let selectionEvent: UInt?
+        private let height: Int
+        private let positions: [Value: Data.Index]?
         private let focusOnArrival: Bool
+        private var keyAction: @MainActor (KeyPress, Value?) -> KeyPressResult = { _, _ in .ignored }
         private let content: @MainActor (K<Row>, Data.Element) -> Content
 
         public init(
@@ -28,6 +33,9 @@ extension UI {
             row: Row,
             id: KeyPath<Data.Element, Value>,
             selection: Value?,
+            height: Int,
+            selectionEvent: UInt? = nil,
+            positions: [Value: Data.Index]? = nil,
             focusOnArrival: Bool = false,
             @ViewBuilder content: @escaping @MainActor (K<Row>, Data.Element) -> Content
         ) {
@@ -35,23 +43,30 @@ extension UI {
             self.data = data
             self.id = id
             self.selection = selection
-            _currentSelection = State(initialValue: selection)
+            self.height = max(1, height)
+            self.selectionEvent = selectionEvent
+            self.positions = positions
+            let cursor = Selection(selection)
+            cursor.reveal(in: data, id: id, positions: positions, height: max(1, height))
+            _cursor = State(initialValue: cursor)
             self.focusOnArrival = focusOnArrival
             self.content = content
+        }
+
+        /// A feature's remaining keys receive the same immediate selection as the list.
+        public func onKeyPress(_ action: @escaping @MainActor (KeyPress, Value?) -> KeyPressResult) -> Self {
+            var list = self
+            list.keyAction = action
+            return list
         }
 
         public var body: some View {
             list
 
-                // Focus the collection on arrival so its bound selection, rather
-                // than the first synthesized row, owns keyboard navigation.
-                .focusable(focusOnArrival, interactions: .edit)
+                // Focus the collection as a unit; the cursor owns row navigation.
+                .focusable(!data.isEmpty, interactions: .edit)
                 .focused($focused)
                 .defaultFocus($focused, focusOnArrival)
-                .onChange(of: selection) { _, value in
-                    // Reconcile model changes without publishing them as user edits.
-                    currentSelection = value
-                }
                 .onChange(of: isEnabled && !data.isEmpty) { _, interactive in
                     // Reclaim collection navigation after an editor closes or a
                     // cleared filter restores rows. Never blur the active editor.
@@ -59,40 +74,129 @@ extension UI {
                         focused = true
                     }
                 }
-                .listStyle(DenseListStyle())
-                // Overflow chrome consumes a new top row as a tree crosses the
-                // viewport boundary. Keep row coordinates stable while expanding.
-                .scrollIndicators(.hidden, axes: .vertical)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .frame(height: height)
+                .accessibilityRole(.list)
                 .disabled(!send.isEnabled)
         }
 
-        // Keep the data-source initializer: builder content eagerly realizes every row.
+        // Compose only the visible model slice. Cursor movement never asks the
+        // renderer to enumerate or validate the full traffic collection.
         private var list: some View {
-            let projection = row.projection(.select, using: send, focus: focusOnArrival ? $focused : nil)
-            let binding = $currentSelection[dynamicMember: \.[emitting: projection]]
-            return SwiftTUI.List(data, id: id, selection: binding) { element in
-                content(row.concept[element[keyPath: id]], element)
+            let cursor = self.cursor
+            let content = self.content
+            let concept = row.concept
+            let id = self.id
+            let selected = cursor.value ?? selection
+            let bounds = cursor.range(in: data, id: id, positions: positions, height: height)
+            let lower = data.index(data.startIndex, offsetBy: bounds.lowerBound)
+            let upper = data.index(data.startIndex, offsetBy: bounds.upperBound)
+            let projection = row.projection(.select, using: send, focus: $focused)
+            let keyboardProjection = row.projection(.select, using: send)
+            return Group {
+                if Content.self is any TextRowContent.Type {
+                    TextCollection(
+                        rows: data[lower ..< upper].compactMap { element in
+                            let value = element[keyPath: id]
+                            guard let row = content(concept[value], element) as? any TextRowContent else {
+                                return nil
+                            }
+                            return .init(value: value, text: row.textRow, actions: row.rowActions)
+                        },
+                        cursor: cursor,
+                        selected: selected,
+                        projection: projection,
+                        offset: bounds.lowerBound,
+                        count: data.count,
+                        height: height
+                    )
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(data[lower ..< upper], id: id) { element in
+                            let value = element[keyPath: id]
+                            SelectionRow(
+                                cursor: cursor,
+                                value: value,
+                                selected: selected == value,
+                                projection: projection,
+                                content: content(concept[value], element)
+                            )
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
             }
-            .onKeyPress(.return) { _ in
-                guard let selection = binding.wrappedValue else {
+            .onChange(
+                of: Selection<Value>.Update(value: selection, event: selectionEvent),
+                initial: true
+            ) { _, update in
+                if cursor.reconcile(update) {
+                    revealSelection()
+                }
+            }
+            .onChange(of: data.count) { _, _ in
+                cursor.refreshViewport(in: data, id: id, positions: positions, height: height)
+            }
+            .onChange(of: positions) { _, _ in
+                cursor.refreshViewport(in: data, id: id, positions: positions, height: height)
+            }
+            .onChange(of: height) { _, _ in
+                cursor.refreshViewport(in: data, id: id, positions: positions, height: height)
+            }
+            .onScrollWheel { event in
+                guard isEnabled else {
                     return .ignored
                 }
-                send(row.activating(selection))
+                let moved = cursor.scroll(
+                    by: event.deltaY,
+                    in: data,
+                    id: id,
+                    positions: positions,
+                    height: height
+                )
+                return moved ? .handled : .ignored
+            }
+            .onKeyPress { key in
+                guard isEnabled, key.modifiers.isEmpty else {
+                    return .ignored
+                }
+                if key.key == .return, let value = cursor.value {
+                    send(row.activating(value))
+                    return .handled
+                }
+                let delta: Int
+                switch key.key {
+                    case .arrowUp:
+                        delta = -1
+                    case .arrowDown:
+                        delta = 1
+                    case .pageUp:
+                        delta = -height
+                    case .pageDown:
+                        delta = height
+                    case .home:
+                        if let first = data.first {
+                            cursor[emitting: keyboardProjection] = first[keyPath: id]
+                            revealSelection()
+                        }
+                        return .handled
+                    case .end:
+                        if let last = data.last {
+                            cursor[emitting: keyboardProjection] = last[keyPath: id]
+                            revealSelection()
+                        }
+                        return .handled
+                    default:
+                        return keyAction(key, cursor.value)
+                }
+                cursor.move(by: delta, in: data, id: id, positions: positions, projection: keyboardProjection)
+                revealSelection()
                 return .handled
             }
         }
-    }
 
-    public struct DenseListStyle: ListStyle, Sendable {
-
-        public init() {}
-        public var snapshotLabel: String {
-            "ListStyle.dense"
-        }
-
-        public func resolvePresentation(for configuration: ListStyleConfiguration) -> ListStylePresentation {
-            .init(showsRowSeparators: false, showsSectionSeparators: false)
+        private func revealSelection() {
+            cursor.reveal(in: data, id: id, positions: positions, height: height)
         }
     }
 }

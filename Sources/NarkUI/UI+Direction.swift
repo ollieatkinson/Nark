@@ -22,9 +22,11 @@ extension UI {
         public var body: some View {
             Text(UI.directionSymbol(directions))
                 .foregroundStyle(UI.directionStyle(directions))
-                .accessibilityLabel(directions.isEmpty
-                    ? "Direction unavailable"
-                    : directions.map(\.name).sorted().joined(separator: " and "))
+                .accessibilityLabel(
+                    directions.isEmpty
+                        ? "Direction unavailable"
+                        : directions.map(\.name).sorted().joined(separator: " and ")
+                )
         }
     }
 

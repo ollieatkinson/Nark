@@ -58,20 +58,18 @@ extension Firewall {
         }
 
         public func validated() throws -> Self {
-            guard
-                !summary.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                !summary.source.isEmpty, summary.name.utf8.count <= 120,
-                summary.source.utf8.count <= 4096,
-                summary.attribution.utf8.count <= 1024, domains.count <= 500_000,
-                !summary.enabled || !domains.isEmpty
-            else {
+            guard !summary.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !summary.source.isEmpty,
+                  summary.name.utf8.count <= 120,
+                  summary.source.utf8.count <= 4096,
+                  summary.attribution.utf8.count <= 1024,
+                  domains.count <= 500_000,
+                  !summary.enabled || !domains.isEmpty else {
                 throw Firewall.Error.message("Invalid blocklist metadata.")
             }
             let domains = try domains.map { value -> String in
-                guard
-                    let normalized = Hostname.normalize(value),
-                    normalized == value
-                else {
+                guard let normalized = Hostname.normalize(value),
+                      normalized == value else {
                     throw Firewall.Error.message("Invalid blocklist domain.")
                 }
                 return normalized
@@ -94,10 +92,9 @@ extension Firewall {
                 lists = try JSONDecoder()
                     .decode([Blocklist].self, from: Data(contentsOf: url))
                     .map { try $0.validated() }
-                guard
-                    lists.count <= 32, lists.reduce(0, { $0 + $1.domains.count }) <= 1_000_000,
-                    Set(lists.map(\.id)).count == lists.count
-                else {
+                guard lists.count <= 32,
+                      lists.reduce(0, { $0 + $1.domains.count }) <= 1_000_000,
+                      Set(lists.map(\.id)).count == lists.count else {
                     throw Firewall.Error.message("Invalid blocklist catalog.")
                 }
             } else {
@@ -112,59 +109,45 @@ extension Firewall {
                 case .read:
                     return
                 case .replace(let input):
-                    guard input.text.utf8.count <= 8_000_000
-                    else {
+                    guard input.text.utf8.count <= 8_000_000 else {
                         throw Firewall.Error.message("Blocklist exceeds 8 MB.")
                     }
                     let domains = try Runtime.parseBlocklist(input.text, limit: 8_000_000)
-                    guard !domains.isEmpty
-                    else {
-                        throw Firewall.Error
-                            .message(
-                                "Blocklist contains no domains; the previous version was retained."
-                            )
+                    guard !domains.isEmpty else {
+                        throw Firewall.Error.message(
+                            "Blocklist contains no domains; the previous version was retained."
+                        )
                     }
-                    let existing = updated
-                        .first { $0.id == input.id || $0.summary.source == input.source }
+                    let existing = updated.first { $0.id == input.id || $0.summary.source == input.source }
                     let list = try Blocklist(
                         summary: .init(
                             id: existing?.id ?? input.id ?? UUID(),
                             name: input.name,
                             source: input.source,
                             attribution: input.attribution,
-                            enabled: input.enable ?? existing?
-                                .summary.enabled ?? false,
+                            enabled: input.enable ?? existing?.summary.enabled ?? false,
                             domainCount: domains.count,
                             updatedAt: Date()
                         ),
                         domains: domains
                     ).validated()
-                    if
-                        let position = updated
-                            .firstIndex(where: { $0.id == list.id })
-                    {
+                    if let position = updated.firstIndex(where: { $0.id == list.id }) {
                         updated[position] = list
                     } else {
                         updated.append(list)
                     }
                 case .toggle(let id):
-                    guard
-                        let position = updated.firstIndex(where: { $0.id == id }),
-                        !updated[position].domains.isEmpty
-                    else {
-                        throw Firewall.Error
-                            .message("Download or import this blocklist before enabling it.")
+                    guard let position = updated.firstIndex(where: { $0.id == id }),
+                          !updated[position].domains.isEmpty else {
+                        throw Firewall.Error.message("Download or import this blocklist before enabling it.")
                     }
                     updated[position].summary.enabled.toggle()
                 case .remove(let id):
                     updated.removeAll { $0.id == id }
             }
-            guard
-                updated.count <= 32,
-                updated.reduce(0, { $0 + $1.domains.count }) <= 1_000_000
-            else {
-                throw Firewall.Error
-                    .message("Blocklist capacity exceeded (32 lists / 1,000,000 domains).")
+            guard updated.count <= 32,
+                  updated.reduce(0, { $0 + $1.domains.count }) <= 1_000_000 else {
+                throw Firewall.Error.message("Blocklist capacity exceeded (32 lists / 1,000,000 domains).")
             }
             if let url {
                 try JSONEncoder().encode(updated).write(to: url, options: .atomic)
@@ -196,9 +179,7 @@ extension Firewall {
                         continue
                     }
                     for suffix in 1 ..< labels.count
-                        where list.domains
-                        .contains(labels.dropFirst(suffix).joined(separator: "."))
-                    {
+                        where list.domains.contains(labels.dropFirst(suffix).joined(separator: ".")) {
                         return list.id
                     }
                 }

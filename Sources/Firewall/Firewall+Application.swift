@@ -28,10 +28,7 @@ extension Firewall {
             let path = URL(fileURLWithPath: path).standardizedFileURL.path
             #if os(macOS)
                 for prefix in ["/private/tmp", "/private/var", "/private/etc"] {
-                    if
-                        path == prefix || path
-                            .hasPrefix(prefix + "/")
-                    {
+                    if path == prefix || path.hasPrefix(prefix + "/") {
                         return String(path.dropFirst("/private".count))
                     }
                 }

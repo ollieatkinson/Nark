@@ -18,7 +18,8 @@ extension MonitorFeature {
         public private(set) var count = 0
 
         public mutating func record(_ snapshot: Firewall.Snapshot, at time: Date) {
-            defer { previous = snapshot
+            defer {
+                previous = snapshot
                 previousTime = time
             }
             guard let previous, let previousTime else {
@@ -48,19 +49,21 @@ extension MonitorFeature {
                 let sample = Sample(
                     received: Double(max(0, new.received - old.received)) / elapsed,
                     sent: Double(max(0, new.sent - old.sent)) / elapsed,
-                    flows: Double(max(
-                        0,
-                        (newCounts[path] ?? 0) - (oldCounts[path] ?? 0)
-                    )) / elapsed
+                    flows: Double(
+                        max(
+                            0,
+                            (newCounts[path] ?? 0) - (oldCounts[path] ?? 0)
+                        )
+                    ) / elapsed
                 )
                 var samples = applications[path] ?? Array(repeating: Sample(), count: count)
                 samples.append(sample)
                 applications[path] = Array(samples.suffix(300))
             }
             // Retained paths and byte summaries bound the working set; discard dormant paths.
-            applications = applications
-                .filter { newCounts[$0.key] != nil || snapshot.traffic?.applications[$0.key] != nil
-                }
+            applications = applications.filter {
+                newCounts[$0.key] != nil || snapshot.traffic?.applications[$0.key] != nil
+            }
             count = min(300, count + 1)
         }
 

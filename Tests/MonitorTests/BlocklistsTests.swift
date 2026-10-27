@@ -12,10 +12,13 @@ import TestSupport
         let runtime = try Firewall.Runtime()
         let preset = Firewall.Blocklist.presets[0].summary
         let store = TestStore(initialState: BlocklistsFeature.State()) {
-            BlocklistsFeature(client: .init(runtime: runtime), load: { source in
-                #expect(source == preset.source)
-                return .init(name: preset.name, source: source, text: "ads.test")
-            })
+            BlocklistsFeature(
+                client: .init(runtime: runtime),
+                load: { source in
+                    #expect(source == preset.source)
+                    return .init(name: preset.name, source: source, text: "ads.test")
+                }
+            )
         }
         await store.send(.toggle) { $0.busy = true }
         await store.receive(\.fetched)
@@ -25,7 +28,8 @@ import TestSupport
         }
         #expect(runtime.isBlocked(app: "/app", host: "ads.test", address: "192.0.2.1"))
         await store.send(.toggle) { $0.busy = true }
-        await store.receive(\.saved) { $0.busy = false
+        await store.receive(\.saved) {
+            $0.busy = false
             $0.catalog = runtime.snapshot().blocklists!
         }
         #expect(!runtime.isBlocked(app: "/app", host: "ads.test", address: "192.0.2.1"))
@@ -34,13 +38,19 @@ import TestSupport
     @Test func download_failure_keeps_existing_enabled_list() async throws {
         let runtime = try Firewall.Runtime()
         let preset = Firewall.Blocklist.presets[0].summary
-        _ = runtime.handle(.blocklist(.replace(.init(
-            id: preset.id,
-            name: preset.name,
-            source: preset.source,
-            text: "ads.test",
-            enable: true
-        ))))
+        _ = runtime.handle(
+            .blocklist(
+                .replace(
+                    .init(
+                        id: preset.id,
+                        name: preset.name,
+                        source: preset.source,
+                        text: "ads.test",
+                        enable: true
+                    )
+                )
+            )
+        )
         var initial = BlocklistsFeature.State()
         initial.catalog = runtime.snapshot().blocklists!
         let store = TestStore(initialState: initial) {
@@ -50,7 +60,8 @@ import TestSupport
             )
         }
         await store.send(.refresh) { $0.busy = true }
-        await store.receive(\.failed) { $0.busy = false
+        await store.receive(\.failed) {
+            $0.busy = false
             $0.error = "Download failed"
         }
         #expect(runtime.isBlocked(app: "/app", host: "ads.test", address: "192.0.2.1"))

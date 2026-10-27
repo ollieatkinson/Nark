@@ -5,7 +5,7 @@ import Vocabulary
 extension UI {
 
     /// A mirrored upload/download history. Values are bytes per second; both axes share a scale.
-    public struct TrafficChart<Concept: L & I_nark_ui_component_chart>: View {
+    public struct TrafficChart<Concept: L & I_nark_ui_component_chart>: View, Equatable {
 
         @Environment(\.terminalAppearance) private var appearance
         public let concept: Concept
@@ -15,6 +15,10 @@ extension UI {
             self.concept = concept
             self.sent = sent
             self.received = received
+        }
+
+        nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.concept == rhs.concept && lhs.sent == rhs.sent && lhs.received == rhs.received
         }
 
         public var body: some View {
@@ -29,10 +33,11 @@ extension UI {
                 Canvas(TrafficDrawing(sent: sent, received: received, theme: appearance.synthesizedTheme()))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 HStack {
-                    Text(sent.isEmpty
-                        ? "Waiting for byte reports"
-                        : "5m window · peak " + UI
-                            .bytes(max(sent.max() ?? 0, received.max() ?? 0)) + "/s")
+                    Text(
+                        sent.isEmpty
+                            ? "Waiting for byte reports"
+                            : "5m window · peak " + UI.bytes(max(sent.max() ?? 0, received.max() ?? 0)) + "/s"
+                    )
                     Spacer()
                     Text("now")
                 }

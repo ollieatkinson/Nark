@@ -18,14 +18,16 @@ import Testing
         let runtime = try Firewall.Runtime()
         _ = runtime.handle(.add(try Firewall.Rule(domain: "example.com")))
         if case .hostname(let name) = quic.inspect(packet) {
-            #expect(runtime.evaluate(.init(
-                app: "/test/browser",
-                host: name,
-                address: "192.0.2.1",
-                port: "443",
-                transport: "UDP",
-                blocked: false
-            ))
+            #expect(runtime.evaluate(
+                .init(
+                    app: "/test/browser",
+                    host: name,
+                    address: "192.0.2.1",
+                    port: "443",
+                    transport: "UDP",
+                    blocked: false
+                )
+            )
             .verdict == .drop)
         } else {
             Issue.record("Retransmitted Initial lost the hostname")
@@ -46,8 +48,7 @@ import Testing
         #expect(coalesced.inspect(a + b) == .hostname("example.com"))
         var frames = Peek.QUIC()
         // PING and a valid ACK may appear before/between CRYPTO frames.
-        #expect(try frames
-            .inspect(packet([1, 2, 0, 0, 0, 0] + second + first)) == .hostname("example.com"))
+        #expect(try frames.inspect(packet([1, 2, 0, 0, 0, 0] + second + first)) == .hostname("example.com"))
     }
 
     @Test func authentication_and_header_integrity_are_required() throws {
@@ -60,13 +61,10 @@ import Testing
         }
         // A server Initial must not be interpreted as a client's hostname.
         var server = Peek.QUIC()
-        #expect(server
-            .inspect(
-                Data(
-                    hex: "cf000000010008f067a5502a4262b5004075c0d95a482cd0991cd25b0aac406a5816b6394100"
-                )
-            ) ==
-            .unavailable)
+        #expect(server.inspect(
+            Data(hex: "cf000000010008f067a5502a4262b5004075c0d95a482cd0991cd25b0aac406a5816b6394100")
+        )
+            == .unavailable)
     }
 
     @Test func truncated_unsupported_and_hostile_packets_are_bounded() throws {
@@ -96,12 +94,13 @@ import Testing
     @Test func packet_numbers_reconstruct_across_a_one_byte_wrap() throws {
         let hello = try handshake()
         var quic = Peek.QUIC()
-        #expect(try quic
-            .inspect(packet(crypto(Array(hello.prefix(80)), offset: 0), number: 255)) == .needMore)
-        #expect(try quic.inspect(packet(
-            crypto(Array(hello.dropFirst(80)), offset: 80),
-            number: 256
-        )) == .hostname("example.com"))
+        #expect(try quic.inspect(packet(crypto(Array(hello.prefix(80)), offset: 0), number: 255)) == .needMore)
+        #expect(try quic.inspect(
+            packet(
+                crypto(Array(hello.dropFirst(80)), offset: 80),
+                number: 256
+            )
+        ) == .hostname("example.com"))
     }
 
     private func vector(_ rfc: Int) throws -> Data {
@@ -115,9 +114,13 @@ import Testing
 
     private func handshake() throws -> [UInt8] {
         // RFC 9001 A.2 plaintext, independent of the implementation's TLS builder.
-        Array(Data(hex: """
-        010000ed0303ebf8fa56f12939b9584a3896472ec40bb863cfd3e86804fe3a47f06a2b69484c00000413011302010000c000000010000e00000b6578616d706c652e636f6dff01000100000a00080006001d0017001800100007000504616c706e000500050100000000003300260024001d00209370b2c9caa47fbabaf4559fedba753de171fa71f50f1ce15d43e994ec74d748002b0003020304000d0010000e0403050306030203080408050806002d00020101001c00024001003900320408ffffffffffffffff05048000ffff07048000ffff0801100104800075300901100f088394c8f03e51570806048000ffff
-        """))
+        Array(
+            Data(
+                hex: """
+                010000ed0303ebf8fa56f12939b9584a3896472ec40bb863cfd3e86804fe3a47f06a2b69484c00000413011302010000c000000010000e00000b6578616d706c652e636f6dff01000100000a00080006001d0017001800100007000504616c706e000500050100000000003300260024001d00209370b2c9caa47fbabaf4559fedba753de171fa71f50f1ce15d43e994ec74d748002b0003020304000d0010000e0403050306030203080408050806002d00020101001c00024001003900320408ffffffffffffffff05048000ffff07048000ffff0801100104800075300901100f088394c8f03e51570806048000ffff
+                """
+            )
+        )
     }
 
     private func crypto(_ bytes: [UInt8], offset: Int) -> [UInt8] {
@@ -163,8 +166,8 @@ import Testing
         let sample = Array(packet[(pnOffset + 4) ..< (pnOffset + 20)])
         var mask = [UInt8](repeating: 0, count: 16)
         var written = 0
-        let status = hp
-            .withUnsafeBytes { key in sample.withUnsafeBytes { input in
+        let status = hp.withUnsafeBytes { key in
+            sample.withUnsafeBytes { input in
                 mask.withUnsafeMutableBytes { output in
                     CCCrypt(
                         CCOperation(kCCEncrypt),
@@ -180,7 +183,8 @@ import Testing
                         &written
                     )
                 }
-            } }
+            }
+        }
         #expect(status == kCCSuccess)
         packet[0] ^= mask[0] & 0xf
         packet[pnOffset] ^= mask[1]
@@ -192,8 +196,10 @@ private extension Data {
 
     init(hex: String) {
         let characters = Array(hex.filter { !$0.isWhitespace })
-        self.init(stride(from: 0, to: characters.count, by: 2).map {
-            UInt8(String(characters[$0 ... ($0 + 1)]), radix: 16)!
-        })
+        self.init(
+            stride(from: 0, to: characters.count, by: 2).map {
+                UInt8(String(characters[$0 ... ($0 + 1)]), radix: 16)!
+            }
+        )
     }
 }

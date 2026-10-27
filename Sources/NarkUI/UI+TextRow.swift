@@ -1,13 +1,14 @@
 import Foundation
 import SwiftTUI
+import Vocabulary
 
 extension UI {
 
     /// Fixed terminal columns rendered as one styled text leaf. Collection rows
     /// do not need a separate layout subtree for every cell and its modifiers.
-    public struct TextRow: View {
+    public struct TextRow: View, Equatable {
 
-        public struct Span: Sendable {
+        public struct Span: Equatable, Sendable {
 
             public let text: String
             public let style: AnyShapeStyle?
@@ -17,9 +18,9 @@ extension UI {
             }
         }
 
-        public struct Column: Sendable {
+        public struct Column: Equatable, Sendable {
 
-            public enum Alignment: Sendable {
+            public enum Alignment: Equatable, Sendable {
                 case leading
                 case trailing
             }
@@ -106,7 +107,18 @@ extension UI {
             self.accessibilityLabel = accessibilityLabel
         }
 
+        nonisolated public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.columns == rhs.columns && lhs.spacing == rhs.spacing
+                && lhs.leadingPadding == rhs.leadingPadding && lhs.accessibilityLabel == rhs.accessibilityLabel
+        }
+
         public var body: some View {
+            text()
+                .lineLimit(1)
+        }
+
+        /// A value-level row fragment also composes into a collection's text block.
+        func text() -> Text {
             var content = Text.StringInterpolation(
                 literalCapacity: 128,
                 interpolationCount: columns.count
@@ -129,7 +141,7 @@ extension UI {
                 Text.RichContent(stringInterpolation: content),
                 semanticMetadata: .init(accessibilityLabel: accessibilityLabel)
             )
-            .lineLimit(1)
+
         }
     }
 }

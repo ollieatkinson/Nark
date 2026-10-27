@@ -33,7 +33,9 @@ struct CommunityLists: View {
                 session.store.blocklists.community,
                 row: nark.ux.monitor.blocklists.community.row,
                 id: \.id.uuidString,
-                selection: session.store.blocklists.selectedCommunity?.id.uuidString
+                selection: session.store.blocklists.selectedCommunity?.id.uuidString,
+                height: max(2, height - 12),
+                selectionEvent: session.store.blocklists.communitySelectionEvent
             ) { _, source in
                 UI.Columns(.community) {
                     Text(source.name.formatted(.terminalText))
@@ -41,13 +43,15 @@ struct CommunityLists: View {
                     Text(source.categories.map(\.shortTitle).joined(separator: " · "))
                         .foregroundStyle(.theme.muted)
                 } trailing: {
-                    Text(session.store.blocklists.catalog.contains { $0.id == source.id }
-                        ? "ADDED"
-                        : "—")
-                        .foregroundStyle(.theme.muted)
+                    Text(
+                        session.store.blocklists.catalog.contains { $0.id == source.id }
+                            ? "ADDED"
+                            : "—"
+                    )
+                    .foregroundStyle(.theme.muted)
                 }
             }
-            .frame(height: max(2, height - 12))
+
             .disabled(session.store.blocklists.busy)
             if let source = session.store.blocklists.selectedCommunity {
                 Text(source.name.formatted(.terminalText))
@@ -61,9 +65,7 @@ struct CommunityLists: View {
                 Text("No lists match this category or search.")
                     .foregroundStyle(.theme.muted)
             }
-            if
-                let error = session.store.blocklists.error
-            {
+            if let error = session.store.blocklists.error {
                 Text(error.formatted(.terminalText))
                     .foregroundStyle(.theme.danger)
                     .lineLimit(1)

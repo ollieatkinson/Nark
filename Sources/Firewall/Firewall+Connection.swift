@@ -22,10 +22,18 @@ extension Firewall {
         }
 
         public init(
-            id: UUID = UUID(), app: String, host: String?, address: String, port: String,
-            transport: String, blocked: Bool, count: Int = 1, lastSeen: Date = Date(),
+            id: UUID = UUID(),
+            app: String,
+            host: String?,
+            address: String,
+            port: String,
+            transport: String,
+            blocked: Bool,
+            count: Int = 1,
+            lastSeen: Date = Date(),
             traffic: Firewall.Traffic.Bytes? = nil,
-            direction: Firewall.Direction = .outbound, localAddress: String? = nil,
+            direction: Firewall.Direction = .outbound,
+            localAddress: String? = nil,
             localPort: String? = nil
         ) {
             self.id = id
@@ -72,8 +80,7 @@ extension Firewall {
             lastSeen = try values.decode(Date.self, forKey: .lastSeen)
             traffic = try values.decodeIfPresent(Firewall.Traffic.Bytes.self, forKey: .traffic)
             // Earlier providers recorded only outgoing connections.
-            direction = try values
-                .decodeIfPresent(Firewall.Direction.self, forKey: .direction) ?? .outbound
+            direction = try values.decodeIfPresent(Firewall.Direction.self, forKey: .direction) ?? .outbound
             localAddress = try values.decodeIfPresent(String.self, forKey: .localAddress)
             localPort = try values.decodeIfPresent(String.self, forKey: .localPort)
         }
@@ -86,8 +93,6 @@ extension Firewall.Connection {
         app == other.app && host == other.host && address == other.address
             && port == other.port && transport == other.transport && blocked == other.blocked
             && direction == other.direction
-            &&
-            (direction != .inbound ||
-                (localAddress == other.localAddress && localPort == other.localPort))
+            && (direction != .inbound || (localAddress == other.localAddress && localPort == other.localPort))
     }
 }

@@ -18,25 +18,35 @@ extension UI {
         let focus: FocusState<Bool>.Binding?
 
         @MainActor func send<Value: EventValueConvertible>(_ value: Value) {
-            focus?.wrappedValue = true
+            send(event(for: value))
+        }
+
+        @MainActor func event<Value: EventValueConvertible>(for value: Value) -> Event {
             switch operation {
                 case .select:
-                    action(control.selecting(value))
+                    control.selecting(value)
                 case .change:
-                    action(control.changing(value))
+                    control.changing(value)
             }
+        }
+
+        @MainActor func send(_ event: Event) {
+            if let focus, !focus.wrappedValue {
+                focus.wrappedValue = true
+            }
+            action(event)
         }
 
         static func == (lhs: Self, rhs: Self) -> Bool {
             lhs.control.concept == rhs.control.concept
-                && lhs.action.sourceIdentity == rhs.action.sourceIdentity
+                && lhs.action == rhs.action
                 && lhs.operation == rhs.operation
                 && (lhs.focus != nil) == (rhs.focus != nil)
         }
 
         func hash(into hasher: inout Hasher) {
             hasher.combine(control.concept)
-            hasher.combine(action.sourceIdentity)
+            hasher.combine(action)
             hasher.combine(operation)
             hasher.combine(focus != nil)
         }

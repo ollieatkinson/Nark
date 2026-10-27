@@ -17,8 +17,7 @@ extension Firewall {
 
         public func request(_ request: Firewall.Request) async throws -> Firewall.Snapshot {
             let reply = try await response(to: request)
-            guard let snapshot = reply.snapshot
-            else {
+            guard let snapshot = reply.snapshot else {
                 throw Firewall.Error.message("Invalid snapshot reply.")
             }
             return snapshot
@@ -26,8 +25,7 @@ extension Firewall {
 
         public func blocklist(_ id: UUID) async throws -> Firewall.Blocklist {
             let reply = try await response(to: .blocklist(.read(id)))
-            guard let list = reply.blocklist
-            else {
+            guard let list = reply.blocklist else {
                 throw Firewall.Error.message("Invalid blocklist reply.")
             }
             return list
@@ -35,8 +33,7 @@ extension Firewall {
 
         public func recording(_ request: Firewall.Recording.Request) async throws -> Firewall.Recording.Batch {
             let reply = try await response(to: .recording(request))
-            guard let batch = reply.recording
-            else {
+            guard let batch = reply.recording else {
                 throw Firewall.Error.message("Invalid recording reply.")
             }
             return batch
@@ -51,51 +48,45 @@ extension Firewall {
         }
 
         public static func live(service: String, team: String) -> Self {
-            Self(response: { request in
-                let data = try JSONEncoder().encode(Message(request))
-                let connection = NSXPCConnection(machServiceName: service, options: .privileged)
-                connection.remoteObjectInterface = NSXPCInterface(with: FirewallService.self)
-                connection.setCodeSigningRequirement(
-                    "anchor apple generic and identifier \"\(ExtensionConfiguration.extensionID)\" and certificate leaf[subject.OU] = \"\(team)\""
-                )
-                let reply: Data = try await withCheckedThrowingContinuation { continuation in
-                    let pending = PendingReply(continuation: continuation, connection: connection)
-                    connection.invalidationHandler = {
-                        pending.finish(
-                            .failure(
-                                Firewall.Error.message(
-                                    "Filter disconnected. Install and enable the signed extension first."
+            Self(
+                response: { request in
+                    let data = try JSONEncoder().encode(Message(request))
+                    let connection = NSXPCConnection(machServiceName: service, options: .privileged)
+                    connection.remoteObjectInterface = NSXPCInterface(with: FirewallService.self)
+                    connection.setCodeSigningRequirement(
+                        "anchor apple generic and identifier \"\(ExtensionConfiguration.extensionID)\" and certificate leaf[subject.OU] = \"\(team)\""
+                    )
+                    let reply: Data = try await withCheckedThrowingContinuation { continuation in
+                        let pending = PendingReply(continuation: continuation, connection: connection)
+                        connection.invalidationHandler = {
+                            pending.finish(
+                                .failure(
+                                    Firewall.Error.message(
+                                        "Filter disconnected. Install and enable the signed extension first."
+                                    )
                                 )
                             )
-                        )
+                        }
+                        connection.interruptionHandler = {
+                            pending.finish(.failure(Firewall.Error.message("Filter restarted. Try again.")))
+                        }
+                        connection.resume()
+                        guard let proxy = connection.remoteObjectProxyWithErrorHandler(
+                            {
+                                pending.finish(.failure($0))
+                            }
+                        ) as? FirewallService else {
+                            pending.finish(.failure(Firewall.Error.message("Cannot connect to filter.")))
+                            return
+                        }
+                        proxy.request(data) { pending.finish(.success($0)) }
+                        DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                            pending.finish(.failure(Firewall.Error.message("Filter did not respond within 5 seconds.")))
+                        }
                     }
-                    connection.interruptionHandler = {
-                        pending.finish(
-                            .failure(Firewall.Error.message("Filter restarted. Try again."))
-                        )
-                    }
-                    connection.resume()
-                    guard
-                        let proxy = connection.remoteObjectProxyWithErrorHandler({
-                            pending.finish(.failure($0))
-                        }) as? FirewallService
-                    else {
-                        pending.finish(
-                            .failure(Firewall.Error.message("Cannot connect to filter."))
-                        )
-                        return
-                    }
-                    proxy.request(data) { pending.finish(.success($0)) }
-                    DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                        pending.finish(
-                            .failure(
-                                Firewall.Error.message("Filter did not respond within 5 seconds.")
-                            )
-                        )
-                    }
+                    return try JSONDecoder().decode(Firewall.Response.self, from: reply)
                 }
-                return try JSONDecoder().decode(Firewall.Response.self, from: reply)
-            })
+            )
         }
     }
 }
