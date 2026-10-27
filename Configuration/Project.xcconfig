@@ -17,6 +17,8 @@ NARK_APP_GROUP = group.com.ollieatkinson.Nark
 // Overlapping provider versions must not claim the same launchd endpoint.
 NARK_MACH_SERVICE = $(NARK_APP_GROUP).filter.v$(CURRENT_PROJECT_VERSION)
 NARK_FILTER_ENTITLEMENT = content-filter-provider
+NARK_APP_PROVISIONING_PROFILE = Nark macOS Development
+NARK_FILTER_PROVISIONING_PROFILE = Nark Filter macOS Development
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
 
 #include? "Signing.local.xcconfig"

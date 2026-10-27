@@ -1,0 +1,7 @@
+// Applied explicitly by the release workflow; local builds use development signing.
+CODE_SIGN_IDENTITY = Developer ID Application
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO
+ENABLE_HARDENED_RUNTIME = YES
+OTHER_CODE_SIGN_FLAGS = $(inherited) --timestamp
+NARK_FILTER_ENTITLEMENT = content-filter-provider-systemextension

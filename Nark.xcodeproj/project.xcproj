@@ -66,7 +66,7 @@
         "PRODUCT_BUNDLE_IDENTIFIER": "com.ollieatkinson.Nark",
         "PRODUCT_MODULE_NAME": "NarkHost",
         "PRODUCT_NAME": "Nark",
-        "PROVISIONING_PROFILE_SPECIFIER": "Nark macOS Development",
+        "PROVISIONING_PROFILE_SPECIFIER": "$(NARK_APP_PROVISIONING_PROFILE)",
       },
     }, {
       "name": "NarkFilter",
@@ -92,7 +92,7 @@
         "PRODUCT_BUNDLE_IDENTIFIER": "com.ollieatkinson.Nark.Filter",
         "PRODUCT_MODULE_NAME": "NarkFilterHost",
         "PRODUCT_NAME": "com.ollieatkinson.Nark.Filter",
-        "PROVISIONING_PROFILE_SPECIFIER": "Nark Filter macOS Development",
+        "PROVISIONING_PROFILE_SPECIFIER": "$(NARK_FILTER_PROVISIONING_PROFILE)",
         "SKIP_INSTALL": "YES",
       },
     },
