@@ -1,0 +1,29 @@
+# SwiftFormat 0.64.3. Spaced declarations and view chains follow Lexicon / SkyUI.
+# Only layout rules are enabled; formatting must not rewrite application logic.
+--min-version 0.64.3
+--exclude .build,DerivedData,dist,.signing
+--swiftversion 6.0
+--indent 4
+--tabwidth 4
+--smarttabs enabled
+--maxwidth 120
+--indentcase true
+--semicolons never
+--allman false
+--closingparen balanced
+--callsiteparen balanced
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--wrapconditions before-first
+--wrapternary before-operators
+--wrap-enum-cases always
+--wrap-single-line-enum-cases true
+# Preserve deliberate type spacing: no leading gap before enum cases.
+--type-blank-lines preserve
+--scope-blank-lines preserve
+--wrap-closure-bodies Columns,middle,trailing,Button,ForEach,Group,HStack,List,VStack,onKeyPress,onTapGesture,onSubmit,onEnded,onAppear,onChange
+--rules blankLineAfterImports,blankLinesAtEndOfScope,blankLinesAtStartOfScope,blankLinesBetweenChainedFunctions,blankLinesBetweenImports,blankLinesBetweenScopes,braces,consecutiveBlankLines,consecutiveSpaces,elseOnSameLine,emptyBraces,indent,leadingDelimiters,linebreakAtEndOfFile,linebreaks,semicolons,singlePropertyPerLine,sortImports,spaceAroundBraces,spaceAroundBrackets,spaceAroundComments,spaceAroundGenerics,spaceAroundOperators,spaceAroundParens,spaceInsideBraces,spaceInsideBrackets,spaceInsideGenerics,spaceInsideParens,trailingSpace,wrap,wrapArguments,wrapAttributes,wrapCaseBodies,wrapClosureBodies,wrapEnumCases,wrapFunctionBodies,wrapGuardStatementBodies,wrapIfExpressionBodies,wrapIfStatementBodies,wrapLoopBodies,wrapMultilineFunctionChains,wrapMultilineStatementBraces,wrapPropertyBodies
+--no-wrap-operators .,->
+--wrap-return-type never
+--wrap-effects never

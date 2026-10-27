@@ -1,0 +1,331 @@
+nark:
+	system:
+		type:
+			identified:
+				id:
+			timestamped:
+				time:
+			lifecycle:
+				start:
+				stop:
+				fail:
+					reason:
+			persistence:
+				rules:
+				blocklists:
+				history:
+	network:
+		type:
+			application:
+			+ nark.system.type.identified
+				scope:
+					bundle:
+					executable:
+				path:
+				signing:
+					identifier:
+					team:
+				process:
+					audit_token:
+			endpoint:
+				address:
+				port:
+				hostname:
+			traffic:
+				received:
+					bytes:
+				sent:
+					bytes:
+			attributed:
+				application:
+				+ nark.network.type.application
+			transported:
+				transport:
+					tcp:
+					udp:
+					other:
+			directed:
+				direction:
+					inbound:
+					outbound:
+					unknown:
+			flow:
+			+ nark.system.type.identified
+			+ nark.network.type.attributed
+			+ nark.network.type.transported
+			+ nark.network.type.directed
+				local:
+				+ nark.network.type.endpoint
+				remote:
+				+ nark.network.type.endpoint
+	policy:
+		type:
+			decision:
+				verdict:
+					allow:
+					drop:
+				rule:
+				+ nark.system.type.identified
+				blocklist:
+				+ nark.system.type.identified
+				reason:
+					matched:
+					default:
+			decided:
+				decision:
+				+ nark.policy.type.decision
+			match:
+				application:
+				+ nark.network.type.application
+				destination:
+				+ nark.network.type.endpoint
+			rule:
+			+ nark.system.type.identified
+			+ nark.policy.type.decided
+				enabled:
+				match:
+				+ nark.policy.type.match
+			blocklist:
+			+ nark.system.type.identified
+				name:
+				description:
+				category:
+					advertising:
+					tracking:
+					security:
+					explicit:
+				source:
+				attribution:
+				enabled:
+				updated_at:
+				rule:
+				+ nark.policy.type.rule
+			policy:
+				rule:
+				+ nark.policy.type.rule
+		blocklist:
+		+ nark.policy.type.blocklist
+			replace:
+			toggle:
+			remove:
+			read:
+		rule:
+		+ nark.policy.type.rule
+			add:
+			remove:
+			toggle:
+			import:
+	activity:
+		type:
+			record:
+			+ nark.network.type.flow
+			+ nark.policy.type.decided
+			+ nark.system.type.timestamped
+				count:
+				traffic:
+				+ nark.network.type.traffic
+			recording:
+			+ nark.system.type.identified
+				application:
+				+ nark.network.type.application
+				entry:
+				+ nark.activity.type.record
+					sequence:
+				cursor:
+					after:
+				gap:
+					count:
+				lifecycle:
+				+ nark.system.type.lifecycle
+		recording:
+		+ nark.activity.type.recording
+			start:
+			read:
+			stop:
+			close:
+		refresh:
+		clear:
+	filter:
+	+ nark.filter.type.provider
+		type:
+			provider:
+				policy:
+				+ nark.policy.type.policy
+				flow:
+				+ nark.network.type.flow
+				+ nark.policy.type.decided
+				activity:
+				+ nark.activity.type.record
+				lifecycle:
+				+ nark.system.type.lifecycle
+				persistence:
+				+ nark.system.type.persistence
+				recording:
+				+ nark.activity.type.recording
+	ui:
+		type:
+			action:
+			control:
+				title:
+				enabled:
+				event:
+					select:
+					+ nark.ui.type.action
+					activate:
+					+ nark.ui.type.action
+					change:
+					+ nark.ui.type.action
+			collection:
+			+ nark.ui.type.control
+				event:
+					move:
+					+ nark.ui.type.action
+				row:
+				+ nark.ui.type.control
+			textfield:
+			+ nark.ui.type.control
+				value:
+				event:
+					submit:
+					+ nark.ui.type.action
+			select:
+			+ nark.ui.type.control
+				event:
+					move:
+					+ nark.ui.type.action
+			editable:
+				add:
+				+ nark.ui.type.control
+				remove:
+				+ nark.ui.type.control
+				toggle:
+				+ nark.ui.type.control
+				import:
+				+ nark.ui.type.control
+		component:
+			select:
+			+ nark.ui.type.select
+			direction:
+			+ nark.network.type.directed.direction
+			disclosure:
+			+ nark.ui.type.control
+			tree_row:
+			+ nark.ui.type.control
+				disclosure:
+				+ nark.ui.component.disclosure
+				direction:
+				+ nark.ui.component.direction
+				activity:
+				+ nark.ui.component.meter
+				event:
+					expand:
+					+ nark.ui.type.action
+					collapse:
+					+ nark.ui.type.action
+			tree:
+			+ nark.ui.type.collection
+				row:
+				+ nark.ui.component.tree_row
+			tab:
+			+ nark.ui.type.control
+				selected:
+			meter:
+				value:
+				maximum:
+			chart:
+			map:
+			button:
+			+ nark.ui.type.control
+			textfield:
+			+ nark.ui.type.textfield
+			application:
+			+ nark.network.type.application
+			+ nark.ui.type.control
+				activity:
+				+ nark.ui.component.meter
+			connection:
+			+ nark.activity.type.record
+			+ nark.ui.type.control
+				direction:
+				+ nark.ui.component.direction
+			rule:
+			+ nark.policy.type.rule
+			+ nark.ui.type.control
+			blocklists:
+			+ nark.ui.type.collection
+			+ nark.ui.type.editable
+				row:
+				+ nark.policy.type.blocklist
+			applications:
+			+ nark.ui.type.collection
+				row:
+				+ nark.ui.component.application
+			connections:
+			+ nark.ui.type.collection
+				row:
+				+ nark.ui.component.connection
+			rules:
+			+ nark.ui.type.collection
+			+ nark.ui.type.editable
+				row:
+				+ nark.ui.component.rule
+	ux:
+		monitor:
+			home:
+				tree:
+				+ nark.ui.component.tree
+			applications:
+			+ nark.ui.component.applications
+			connections:
+			+ nark.ui.component.connections
+			rules:
+			+ nark.ui.component.rules
+			search:
+			+ nark.ui.component.textfield
+				field:
+				+ nark.ui.component.select
+			view:
+			+ nark.ui.component.button
+				home:
+				+ nark.ui.component.tab
+				list:
+				+ nark.ui.component.tab
+					toggle:
+					+ nark.ui.type.control
+				graph:
+				+ nark.ui.type.control
+				activity:
+				+ nark.ui.component.tab
+				rules:
+				+ nark.ui.component.tab
+			block:
+				destination:
+				+ nark.ui.component.button
+				application:
+				+ nark.ui.component.button
+				connection:
+				+ nark.ui.component.button
+			activity:
+			+ nark.ui.component.chart
+			map:
+			+ nark.ui.component.map
+				toggle:
+				+ nark.ui.component.tab
+			detail:
+			+ nark.ui.component.connection
+				close:
+				+ nark.ui.component.button
+			blocklists:
+			+ nark.ui.component.blocklists
+				community:
+				+ nark.ui.type.collection
+					show:
+					+ nark.ui.type.control
+					add:
+					+ nark.ui.type.control
+					category:
+					+ nark.ui.type.control
+				refresh:
+				+ nark.ui.type.control
+				close:
+				+ nark.ui.type.control

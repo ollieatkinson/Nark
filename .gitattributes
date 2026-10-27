@@ -1,0 +1,3 @@
+# Normalize source and configuration line endings; retain binary geography assets.
+* text=auto eol=lf
+*.bin binary

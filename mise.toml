@@ -1,0 +1,14 @@
+[tools]
+swiftformat = { version = "0.64.3", no_app = true, rename_exe = "swiftformat" }
+
+[tasks.format]
+description = "Format owned Swift source"
+run = "Scripts/format.sh"
+
+[tasks."format:check"]
+description = "Check Swift formatting without writing files"
+run = "Scripts/format.sh --check"
+
+[tasks.test]
+description = "Check formatting and run Swift Testing"
+run = "Scripts/test.sh"

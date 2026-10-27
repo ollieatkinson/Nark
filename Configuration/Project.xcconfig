@@ -1,0 +1,22 @@
+SDKROOT = macosx
+SUPPORTED_PLATFORMS = macosx
+MACOSX_DEPLOYMENT_TARGET = 15.0
+SWIFT_VERSION = 6.0
+SWIFT_STRICT_CONCURRENCY = complete
+ONLY_ACTIVE_ARCH[config=Debug] = YES
+SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated
+CLANG_ENABLE_MODULES = YES
+ENABLE_HARDENED_RUNTIME = YES
+ENABLE_USER_SCRIPT_SANDBOXING = YES
+GENERATE_INFOPLIST_FILE = NO
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Development
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 25
+NARK_APP_GROUP = group.com.ollieatkinson.Nark
+// Overlapping provider versions must not claim the same launchd endpoint.
+NARK_MACH_SERVICE = $(NARK_APP_GROUP).filter.v$(CURRENT_PROJECT_VERSION)
+NARK_FILTER_ENTITLEMENT = content-filter-provider
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
+
+#include? "Signing.local.xcconfig"

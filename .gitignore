@@ -1,0 +1,44 @@
+# SwiftPM and build output. Keep Package.resolved and bundled resources.
+.build/
+.swiftpm/
+/build/
+/DerivedData/
+/dist/
+
+# Xcode user state. Keep shared schemes and the native project.xcproj.
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Local signing configuration and exported signing assets.
+/.signing/
+/Configuration/Signing.local.xcconfig
+*.p12
+*.p8
+*.key
+*.pem
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+
+# Local environment overrides. Keep mise.toml and example configuration.
+.env
+.env.*
+!.env.example
+!.env.template
+mise.local.toml
+.mise.local.toml
+
+# Recorded traffic and temporary output.
+Recordings/
+recordings/
+connections.jsonl
+*.log
+*.tmp
+.swiftformat.cache
+
+# macOS metadata.
+.DS_Store
+._*

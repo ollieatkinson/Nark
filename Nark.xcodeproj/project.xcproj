@@ -1,0 +1,106 @@
+{
+  "id": "A10000000000000000000001",
+  "default-configuration": "Debug",
+  "configurations": [
+    { "name": "Debug", "file": { "anchor": "Configuration", "relative-path": "Project.xcconfig" } },
+    { "name": "Release", "file": { "anchor": "Configuration", "relative-path": "Project.xcconfig" } },
+  ],
+  "localizations": {
+    "development": "en",
+  },
+  "packages": [
+    {
+      "kind": "local",
+      "path": ".",
+    },
+  ],
+  "files": [
+    {
+      "kind": "group",
+      "path": "App",
+      "children": [
+        { "kind": "folder", "path": "Nark", "target-membership": [ "Nark" ] },
+        { "kind": "folder", "path": "NarkFilter", "target-membership": [ "NarkFilter" ] },
+      ],
+    },
+    { "kind": "folder", "path": "Configuration" },
+    {
+      "kind": "group",
+      "name": "Products",
+      "children": [
+        { "path": "<PRODUCTS>/Nark.app", "type": "wrapper.application" },
+        { "path": "<PRODUCTS>/com.ollieatkinson.Nark.Filter.systemextension", "type": "wrapper.system-extension", "target-membership": [ { "build-phase": "Nark/copy/Embed System Extensions", "code-sign-on-copy": true } ] },
+      ],
+    },
+  ],
+  "targets": [
+    {
+      "name": "Nark",
+      "id": "A10000000000000000000002",
+      "product": "Products/Nark.app",
+      "product-type": "application",
+      "dependencies": [
+        "NarkFilter",
+      ],
+      "build-phases": [
+        "compile-sources",
+        "frameworks",
+        "resources",
+        {
+          "kind": "copy",
+          "name": "Embed System Extensions",
+          "bundle-base-path": "contents-directory",
+          "relative-path": "Library/SystemExtensions",
+        },
+      ],
+      "package-product-members": [
+        {
+          "product-name": "NarkApplication",
+          "build-phase": { "build-phase": "frameworks" },
+        },
+      ],
+      "build-settings": {
+        "CODE_SIGN_ENTITLEMENTS": "Configuration/Nark.entitlements",
+        "EXECUTABLE_NAME": "nark",
+        "INFOPLIST_FILE": "Configuration/Nark-Info.plist",
+        "PRODUCT_BUNDLE_IDENTIFIER": "com.ollieatkinson.Nark",
+        "PRODUCT_MODULE_NAME": "NarkHost",
+        "PRODUCT_NAME": "Nark",
+        "PROVISIONING_PROFILE_SPECIFIER": "Nark macOS Development",
+      },
+    }, {
+      "name": "NarkFilter",
+      "id": "A10000000000000000000003",
+      "product": "Products/com.ollieatkinson.Nark.Filter.systemextension",
+      "product-type": "system-extension",
+      "build-phases": [
+        "compile-sources",
+        "frameworks",
+        "resources",
+      ],
+      "package-product-members": [
+        {
+          "product-name": "NarkExtension",
+          "build-phase": { "build-phase": "frameworks" },
+        },
+      ],
+      "build-settings": {
+        "CODE_SIGN_ENTITLEMENTS": "Configuration/NarkFilter.entitlements",
+        "EXECUTABLE_NAME": "NarkFilter",
+        "INFOPLIST_FILE": "Configuration/NarkFilter-Info.plist",
+        "INSTALL_PATH": "$(LOCAL_LIBRARY_DIR)/SystemExtensions",
+        "PRODUCT_BUNDLE_IDENTIFIER": "com.ollieatkinson.Nark.Filter",
+        "PRODUCT_MODULE_NAME": "NarkFilterHost",
+        "PRODUCT_NAME": "com.ollieatkinson.Nark.Filter",
+        "PROVISIONING_PROFILE_SPECIFIER": "Nark Filter macOS Development",
+        "SKIP_INSTALL": "YES",
+      },
+    },
+  ],
+  "build-settings": {
+    "SWIFT_OPTIMIZATION_LEVEL[config=Debug]": "-Onone",
+    "SWIFT_OPTIMIZATION_LEVEL[config=Release]": "-O",
+  },
+  "last-upgrade": "27.2",
+  "last-swift-update": "27.2",
+}
